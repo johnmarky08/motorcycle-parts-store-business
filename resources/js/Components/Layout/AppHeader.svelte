@@ -1,8 +1,10 @@
 <script>
     import { onMount, tick } from "svelte";
+    import { getPreviewRole, previewRoles, PREVIEW_ROLE_CHANGE_EVENT, setPreviewRole } from "../Config/previewRoles.js";
 
     export let title = "Dashboard";
     export let mobileMenuOpen = false;
+    let previewRole = "admin";
 
     // Preview-only notifications. Replace with Inertia props when notification data is available.
     let notifications = [
@@ -47,6 +49,10 @@
     $: unreadCount = notifications.filter((notification) => !notification.read).length;
 
     onMount(() => {
+        previewRole = getPreviewRole();
+        const handleRoleChange = (event) => {
+            previewRole = event.detail;
+        };
         const handleDocumentClick = (event) => {
             if (notificationsOpen && notificationPanel && !notificationPanel.contains(event.target) && notificationBell && !notificationBell.contains(event.target)) {
                 closeNotifications();
@@ -61,10 +67,12 @@
 
         document.addEventListener("click", handleDocumentClick);
         window.addEventListener("keydown", handleKeydown);
+        window.addEventListener(PREVIEW_ROLE_CHANGE_EVENT, handleRoleChange);
 
         return () => {
             document.removeEventListener("click", handleDocumentClick);
             window.removeEventListener("keydown", handleKeydown);
+            window.removeEventListener(PREVIEW_ROLE_CHANGE_EVENT, handleRoleChange);
         };
     });
 
@@ -91,6 +99,10 @@
     function markAllAsRead() {
         notifications = notifications.map((notification) => ({ ...notification, read: true }));
     }
+
+    function changePreviewRole(event) {
+        setPreviewRole(event.currentTarget.value);
+    }
 </script>
 
 <header class="relative flex h-[76px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8">
@@ -101,7 +113,15 @@
         <div class="hidden h-5 w-px bg-slate-200 lg:block"></div>
         <p class="text-sm font-medium text-slate-500">{title}</p>
     </div>
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3 sm:gap-4">
+        <label class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            <span class="hidden sm:inline">Preview role</span>
+            <select aria-label="Preview role" value={previewRole} on:change={changePreviewRole} class="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium normal-case tracking-normal text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                {#each Object.entries(previewRoles) as [value, role]}
+                    <option value={value}>{role.label}</option>
+                {/each}
+            </select>
+        </label>
         <button
             bind:this={notificationBell}
             type="button"
