@@ -1,7 +1,7 @@
 <script>
     import { onMount } from "svelte";
-    import AppHeader from "../Components/AppHeader.svelte";
-    import AppSidebar from "../Components/AppSidebar.svelte";
+    import AppHeader from "../Components/Layout/AppHeader.svelte";
+    import AppSidebar from "../Components/Layout/AppSidebar.svelte";
 
     // Preview-only data. Replace with Inertia props when the backend contract is available.
     let users = [
