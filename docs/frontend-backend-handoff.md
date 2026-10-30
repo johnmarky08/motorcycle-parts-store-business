@@ -1,16 +1,16 @@
 # Final Frontend–Backend Integration Handoff
 
-This document describes the current frontend preview and the backend work still required for the One Prompt Away motorcycle parts store system. It is an integration reference, not a claim that authentication, persistence, APIs, CSV ingestion, or machine-learning services already exist.
+This document describes the current frontend implementation and the backend work still required for the One Prompt Away motorcycle parts store system. Authentication, role enforcement, user persistence, product persistence, stock movements and sale transactions are now implemented; dataset ingestion and machine-learning services remain outstanding.
 
 ## 1. Architecture and source of truth
 
 - **Stack:** Laravel 12, Inertia.js, Svelte 5, Vite 6 and Tailwind CSS 4.
 - **Page resolution:** [app.js](../resources/js/app.js) eagerly resolves `./Pages/**/*.svelte` and renders `pages[\`./Pages/${name}.svelte\`]`. Page components must remain directly under `resources/js/Pages/`.
-- **Routes:** [routes/web.php](../routes/web.php) currently uses temporary closure routes and `Inertia::render()`:
+- **Routes:** [routes/web.php](../routes/web.php) uses authenticated Laravel route groups and Inertia responses:
 
   | Route | Inertia page |
   |---|---|
-  | `/` | `Welcome` |
+  | `/` | Redirects to `Login` or `Dashboard` |
   | `/login` | `Login` |
   | `/dashboard` | `Dashboard` |
   | `/user-management` | `UserManagement` |
@@ -21,16 +21,16 @@ This document describes the current frontend preview and the backend work still 
 
 - **Styling:** [app.css](../resources/css/app.css) imports Tailwind CSS 4 and Inter. The approved Dashboard baseline is the light slate/white interface from commit `318d613`.
 - **Shared components:**
-  - [AppHeader.svelte](../resources/js/Components/Layout/AppHeader.svelte): page title, preview-role selector, notification bell and mock notification panel.
-  - [AppSidebar.svelte](../resources/js/Components/Layout/AppSidebar.svelte): branding, role-specific preview navigation, active state and responsive mobile drawer.
+  - [AppHeader.svelte](../resources/js/Components/Layout/AppHeader.svelte): page title, notification bell and mock notification panel.
+  - [AppSidebar.svelte](../resources/js/Components/Layout/AppSidebar.svelte): branding, role-aware navigation, active state, logout action and responsive mobile drawer.
   - [StatCard.svelte](../resources/js/Components/Shared/StatCard.svelte): reusable KPI card with `label`, `value`, `change`, `trend` and `icon`.
-  - [previewRoles.js](../resources/js/Components/Config/previewRoles.js): centralized preview roles, navigation, localStorage key and role-change event.
+  - [previewRoles.js](../resources/js/Components/Config/previewRoles.js): static role definitions used for authenticated navigation; it does not control identity or authorization.
 
-All domain pages currently use local mock state. Backend props and mutations should be introduced at the Inertia page boundary without changing the existing page names or visual component contracts unnecessarily.
+Operational pages receive paginated Inertia data from backend controllers. Dashboard, inventory, and sales transactions are database-backed. Prediction and Knowledge Analysis use protected JSON analysis endpoints backed by the controlled Python CLI; synthetic datasets are explicitly labeled and are not store transactions.
 
 ## 2. Preview roles
 
-The header selector is a **frontend testing mechanism**, not login, authentication or authorization. It defaults to `admin`, stores only the selected role key in `localStorage` under `motorcycle-parts-preview-role`, and dispatches a local `preview-role-change` event.
+The header selector remains a **frontend compatibility/testing mechanism**, not login, authentication or authorization. Server-side middleware is authoritative and rejects disallowed routes. It defaults to `admin`, stores only the selected role key in `localStorage` under `motorcycle-parts-preview-role`, and dispatches a local `preview-role-change` event. It should be removed once role-aware page props replace the compatibility preview.
 
 Current proposed preview menus:
 
@@ -47,13 +47,13 @@ The direct routes remain available regardless of the selected menu. Server-side 
 
 | Page and route | Intended role | Current preview UI | Backend work eventually required | Status |
 |---|---|---|---|---|
-| [Login.svelte](../resources/js/Pages/Login.svelte) · `/login` | All assigned users | Email, password visibility toggle, remember-me visual control, required/email validation, loading and invalid-credentials preview state. No role selector. | Authentication endpoint/session, identity field decision, password verification, rate limiting, reset and verification flows, redirect and `user_level`. | Implemented preview |
+| [Login.svelte](../resources/js/Pages/Login.svelte) · `/login` | All assigned users | Laravel session login, email/password validation, remember-me, loading and server error state. | Email identity, session login, rate limiting and active-account checks implemented. Password reset mail delivery and email verification remain configuration/QA work. | Implemented |
 | [Dashboard.svelte](../resources/js/Pages/Dashboard.svelte) · `/dashboard` | All roles, with role-specific content | Admin baseline KPIs, sales chart, inventory health, best sellers and slow movers. Other previews show role-focused metrics and activity. | Summary statistics, trend series, inventory health, best sellers, slow movers and role-aware props. | Implemented preview |
-| [UserManagement.svelte](../resources/js/Pages/UserManagement.svelte) · `/user-management` | Admin | Search, role/status filters, user table, add/edit form, activate/deactivate local actions and validation. | Paginated listing, create/update/deactivate actions, unique email validation, role permissions and audit behavior. | Implemented preview |
-| [Prediction.svelte](../resources/js/Pages/Prediction.svelte) · `/prediction` | Admin preview; access for other roles needs confirmation | Four workflows: product demand, sales, slow-moving products and best-selling products. Includes inputs, validation, loading, sample result, failure, insufficient-data and reset states. | Prediction request/run lifecycle, model execution, result schema, errors, minimum history and permissions. | Implemented preview |
-| [InventoryManagement.svelte](../resources/js/Pages/InventoryManagement.svelte) · `/inventory` | Inventory Clerk preview; Admin access needs confirmation | Search, category/status filters, derived summaries, add/edit product, SKU validation, stock receipt/reduction and confirmation. | Product/catalog persistence, stock movements, concurrency-safe stock validation and permissions. | Implemented preview |
-| [SalesManagement.svelte](../resources/js/Pages/SalesManagement.svelte) · `/sales` | Sales Personnel preview; Admin access needs confirmation | Transaction history/search/filters, details, new-sale product search, cart, quantity/stock validation, confirmation and local stock reduction. | Transaction persistence, stock reservation/validation, payment handling, totals, actor and transaction status. | Implemented preview |
-| [KnowledgeAnalysis.svelte](../resources/js/Pages/KnowledgeAnalysis.svelte) · `/knowledge-analysis` | Instructor preview | Dataset selector, metadata, sample rows/schema, search, quality summaries, illustrative analysis, training configuration, simulated states, MAE/RMSE/MAPE explanations and saved-model selection. | CSV ingestion/validation, dataset persistence, training jobs, metrics, model storage/loading and permissions. | Implemented preview |
+| [UserManagement.svelte](../resources/js/Pages/UserManagement.svelte) · `/user-management` | Admin | Search, role/status filters, user table and local form behavior seeded from backend props. | Paginated listing, create/update/deactivate/delete endpoints and unique email validation implemented; UI mutation wiring and audit history remain. | Partial |
+| [Prediction.svelte](../resources/js/Pages/Prediction.svelte) · `/prediction` | Admin | Select a validated dataset/algorithm, train a persisted model, and run a server-side prediction. | Operational forecast horizons and live completed-sales ranking workflows remain to be integrated. | Partial |
+| [InventoryManagement.svelte](../resources/js/Pages/InventoryManagement.svelte) · `/inventory` | Inventory Clerk and Admin | Database-backed product CRUD, filters, sorting, pagination, stock adjustment and movement history. | Product/category persistence, locking, validation and permissions implemented. | Implemented |
+| [SalesManagement.svelte](../resources/js/Pages/SalesManagement.svelte) · `/sales` | Sales Personnel and Admin | Database-backed cart, server-calculated transaction creation, history, details, filters and pagination. | Transaction persistence, totals, row locking, stock movements and idempotency implemented. | Implemented |
+| [KnowledgeAnalysis.svelte](../resources/js/Pages/KnowledgeAnalysis.svelte) · `/knowledge-analysis` | Instructor | Displays validated synthetic dataset metadata and persisted model metrics from protected endpoints. | Upload management, live operational insights, prediction history and background jobs remain future work. | Partial |
 
 ## 4. Frontend field contracts
 
@@ -231,7 +231,7 @@ return Inertia::render('InventoryManagement', [
 
 The frontend exposes the required model choices **Simple Linear Regression** and **Random Forest Regression**. It exposes four prediction use cases: product demand, sales, slow-moving products and best-selling products. Knowledge Analysis exposes dataset preview, feature/target selection, illustrative 80/20 split, forecast horizon, training status, evaluation metrics and saved-model selection.
 
-The assignment requires at least 1,000 CSV records per required dataset. The frontend displays mock metadata above that threshold and provides an explicit insufficient-data preview state, but it does not ingest files or count actual rows.
+The assignment requires at least 1,000 CSV records per required dataset. Current development CSVs are synthetic and contain 1,200 records each. [REAL_DATA_READINESS.md](../ml/REAL_DATA_READINESS.md) defines the pipeline-ready real-data format, and [validate_datasets.py](../ml/validate_datasets.py) validates future files without modifying them. Real data has not yet been collected or certified.
 
 MAE, RMSE and MAPE are displayed where applicable with plain-language explanations. Their formulas, unit normalization, zero-value behavior, minimum data history, training architecture, queueing, evaluation split, model persistence, loading semantics and prediction freshness are **Needs confirmation**.
 
@@ -243,7 +243,7 @@ Prioritized decisions that affect implementation:
 2. Final role values and server-side permissions for each page/action.
 3. Product fields, category relationships, SKU uniqueness, stock location and reorder/stock-status rules.
 4. Sales totals, currency/timezone, payment processing, transaction statuses and return/refund behavior.
-5. Dataset CSV schemas, required columns, date granularity, missing/duplicate handling and the 1,000-record rule.
+5. Dataset CSV schemas, required columns, date granularity, missing/duplicate handling, product encoding, and the 1,000-record rule. See [REAL_DATA_READINESS.md](../ml/REAL_DATA_READINESS.md).
 6. Prediction targets, features, history requirements, horizons, ranking definitions and output fields for all four workflows.
 7. Training execution model, queued versus synchronous statuses, evaluation formulas, MAPE handling, model versioning and persistence/loading.
 8. Backend error, authorization-denied, stale-data and insufficient-data response shapes.
