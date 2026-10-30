@@ -1,10 +1,9 @@
 <script>
     import { onMount, tick } from "svelte";
-    import { getPreviewRole, previewRoles, PREVIEW_ROLE_CHANGE_EVENT, setPreviewRole } from "../Config/previewRoles.js";
+    import Button from "../../lib/components/ui/Button.svelte";
 
     export let title = "Dashboard";
     export let mobileMenuOpen = false;
-    let previewRole = "admin";
 
     // Preview-only notifications. Replace with Inertia props when notification data is available.
     let notifications = [
@@ -49,10 +48,6 @@
     $: unreadCount = notifications.filter((notification) => !notification.read).length;
 
     onMount(() => {
-        previewRole = getPreviewRole();
-        const handleRoleChange = (event) => {
-            previewRole = event.detail;
-        };
         const handleDocumentClick = (event) => {
             if (notificationsOpen && notificationPanel && !notificationPanel.contains(event.target) && notificationBell && !notificationBell.contains(event.target)) {
                 closeNotifications();
@@ -67,12 +62,10 @@
 
         document.addEventListener("click", handleDocumentClick);
         window.addEventListener("keydown", handleKeydown);
-        window.addEventListener(PREVIEW_ROLE_CHANGE_EVENT, handleRoleChange);
 
         return () => {
             document.removeEventListener("click", handleDocumentClick);
             window.removeEventListener("keydown", handleKeydown);
-            window.removeEventListener(PREVIEW_ROLE_CHANGE_EVENT, handleRoleChange);
         };
     });
 
@@ -100,28 +93,17 @@
         notifications = notifications.map((notification) => ({ ...notification, read: true }));
     }
 
-    function changePreviewRole(event) {
-        setPreviewRole(event.currentTarget.value);
-    }
 </script>
 
-<header class="relative flex h-[76px] shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8">
+<header class="relative flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8">
     <div class="flex items-center gap-3">
-        <button class="rounded-md p-1.5 text-slate-500 hover:bg-slate-50 hover:text-slate-900 lg:hidden" aria-label="Open navigation menu" aria-expanded={mobileMenuOpen} on:click={() => (mobileMenuOpen = true)}>
+        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation menu" aria-expanded={mobileMenuOpen} onclick={() => (mobileMenuOpen = true)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
-        </button>
+        </Button>
         <div class="hidden h-5 w-px bg-slate-200 lg:block"></div>
-        <p class="text-sm font-medium text-slate-500">{title}</p>
+        <p class="text-sm font-semibold tracking-tight text-slate-700">{title}</p>
     </div>
     <div class="flex items-center gap-3 sm:gap-4">
-        <label class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-            <span class="hidden sm:inline">Preview role</span>
-            <select aria-label="Preview role" value={previewRole} on:change={changePreviewRole} class="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium normal-case tracking-normal text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                {#each Object.entries(previewRoles) as [value, role]}
-                    <option value={value}>{role.label}</option>
-                {/each}
-            </select>
-        </label>
         <button
             bind:this={notificationBell}
             type="button"
@@ -129,7 +111,7 @@
             aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
             aria-expanded={notificationsOpen}
             aria-controls="notification-panel"
-            on:click|stopPropagation={toggleNotifications}
+            onclick={(event) => { event.stopPropagation(); toggleNotifications(); }}
         >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-[19px] w-[19px]" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
             {#if unreadCount > 0}
@@ -155,11 +137,11 @@
                 </div>
                 <div class="flex items-center gap-2">
                     {#if unreadCount > 0}
-                        <button type="button" class="text-[11px] font-semibold text-blue-600 hover:text-blue-700" on:click={markAllAsRead}>
+                        <button type="button" class="text-[11px] font-semibold text-blue-600 hover:text-blue-700" onclick={markAllAsRead}>
                             Mark all as read
                         </button>
                     {/if}
-                    <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label="Close notifications" on:click={closeNotifications}>
+                    <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label="Close notifications" onclick={closeNotifications}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
                     </button>
                 </div>
@@ -172,7 +154,7 @@
                             type="button"
                             class:bg-slate-50={!notification.read}
                             class="flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-slate-50"
-                            on:click={() => markAsRead(notification.id)}
+                            onclick={() => markAsRead(notification.id)}
                         >
                             <span class:bg-amber-50={notification.type === "stock"} class:bg-rose-50={notification.type === "critical"} class:bg-blue-50={notification.type === "sales"} class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
                                 {#if notification.type === "stock"}

@@ -10,4 +10,45 @@
 @theme {
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-background: #ffffff;
+    --color-foreground: #0f172a;
+    --color-card: #ffffff;
+    --color-card-foreground: #0f172a;
+    --color-primary: #0f172a;
+    --color-primary-foreground: #ffffff;
+    --color-secondary: #f1f5f9;
+    --color-secondary-foreground: #334155;
+    --color-muted: #f8fafc;
+    --color-muted-foreground: #64748b;
+    --color-accent: #f1f5f9;
+    --color-accent-foreground: #0f172a;
+    --color-destructive: #e11d48;
+    --color-border: #e2e8f0;
+    --color-input: #e2e8f0;
+    --color-ring: #93c5fd;
+    --color-popover: #ffffff;
+    --color-popover-foreground: #0f172a;
+}
+
+:root {
+    --radius: 0.625rem;
+    --surface-subtle: #f8fafc;
+    --surface-muted: #f1f5f9;
+    --text-soft: #64748b;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+
+    body {
+        @apply bg-background text-foreground antialiased;
+    }
+}
+
+dialog[open] {
+    position: static;
+    inset: auto;
+    transform: none;
 }
