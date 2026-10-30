@@ -1,16 +1,23 @@
 <script>
     import { onMount } from "svelte";
+    import { router } from "@inertiajs/svelte";
     import AppHeader from "../Components/Layout/AppHeader.svelte";
     import AppSidebar from "../Components/Layout/AppSidebar.svelte";
+    import Button from "../lib/components/ui/Button.svelte";
 
-    // Preview-only data. Replace with Inertia props when the backend contract is available.
-    let users = [
+    export let initialUsers = [];
+    export let auth = { user: null };
+    export let pendingCount = 0;
+    export let pendingRegistrations = [];
+
+    const mockUsers = [
         { id: 1, name: "John Dela Cruz", email: "john@example.com", role: "admin", status: "active", last_login_at: "Today, 9:42 AM" },
         { id: 2, name: "Maria Santos", email: "maria.santos@example.com", role: "inventory_clerk", status: "active", last_login_at: "Today, 8:16 AM" },
         { id: 3, name: "Carlo Reyes", email: "carlo.reyes@example.com", role: "sales_personnel", status: "active", last_login_at: "Yesterday, 4:28 PM" },
-        { id: 4, name: "Angela Garcia", email: "angela.garcia@example.com", role: "instructor", status: "inactive", last_login_at: "Oct 21, 2026" },
+        { id: 4, name: "Angela Garcia", email: "angela.garcia@example.com", role: "instructor", status: "suspended", last_login_at: "Oct 21, 2026" },
         { id: 5, name: "Paolo Mendoza", email: "paolo.mendoza@example.com", role: "inventory_clerk", status: "active", last_login_at: "Oct 20, 2026" },
     ];
+    let users = initialUsers.length ? initialUsers.map((user) => ({ ...user })) : mockUsers;
 
     const roles = [
         { value: "admin", label: "Admin" },
@@ -105,21 +112,49 @@
             last_login_at: "Not yet signed in",
         };
 
-        if (editingUserId) {
-            users = users.map((user) => user.id === editingUserId ? { ...user, ...payload } : user);
-            successMessage = "User updated in this preview.";
-        } else {
-            const nextId = Math.max(...users.map((user) => user.id), 0) + 1;
-            users = [...users, { id: nextId, ...payload }];
-            successMessage = "User added to this preview.";
-        }
+        const options = {
+            preserveScroll: true,
+            onSuccess: () => {
+                showForm = false;
+                successMessage = editingUserId ? "User updated successfully." : "User created successfully.";
+            },
+            onError: (errors) => {
+                formErrors = errors;
+                errorMessage = "Please correct the highlighted fields.";
+            },
+        };
 
-        showForm = false;
+        if (editingUserId) {
+            router.put(`/user-management/${editingUserId}`, payload, options);
+        } else {
+            router.post("/user-management", payload, options);
+        }
     }
 
     function toggleStatus(user) {
-        users = users.map((item) => item.id === user.id ? { ...item, status: item.status === "active" ? "inactive" : "active" } : item);
-        successMessage = `${user.name} is now ${user.status === "active" ? "inactive" : "active"} in this preview.`;
+        router.patch(`/user-management/${user.id}/status`, {}, {
+            preserveScroll: true,
+            onSuccess: () => (successMessage = "User status updated successfully."),
+        });
+    }
+
+    function approveRegistration(user) {
+        const role = window.prompt("Assign a final role: instructor, inventory_clerk, or sales_personnel", user.requested_role || "sales_personnel");
+        if (!["instructor", "inventory_clerk", "sales_personnel"].includes(role)) return;
+        router.patch(`/user-management/${user.id}/approve`, { role }, { preserveScroll: true });
+    }
+
+    function rejectRegistration(user) {
+        if (!window.confirm(`Reject ${user.name}'s registration?`)) return;
+        router.patch(`/user-management/${user.id}/reject`, {}, { preserveScroll: true });
+    }
+
+    function deleteUser(user) {
+        if (!window.confirm(`Delete ${user.name}? This action cannot be undone.`)) return;
+        router.delete(`/user-management/${user.id}`, {
+            preserveScroll: true,
+            onSuccess: () => (successMessage = "User deleted successfully."),
+        });
     }
 </script>
 
@@ -127,8 +162,8 @@
     <title>User Management | One Prompt Away</title>
 </svelte:head>
 
-<div class="flex h-screen min-h-[720px] overflow-hidden bg-slate-50 font-sans text-slate-900">
-    <AppSidebar activeItem="User Management" bind:mobileMenuOpen />
+<div class="flex min-h-screen overflow-x-hidden bg-slate-50 font-sans text-slate-900 lg:h-screen">
+    <AppSidebar activeItem="User Management" {auth} bind:mobileMenuOpen />
     <div class="flex min-w-0 flex-1 flex-col">
         <AppHeader title="User Management" bind:mobileMenuOpen />
         <main class="min-h-0 flex-1 overflow-y-auto">
@@ -139,15 +174,15 @@
                         <h1 class="text-2xl font-semibold tracking-tight text-slate-950">User Management</h1>
                         <p class="mt-1 text-sm text-slate-500">Manage user access and account status for the store.</p>
                     </div>
-                    <button type="button" class="flex w-fit items-center gap-2 rounded-md bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700" on:click={openCreateForm}>
+                    <Button size="sm" className="flex w-fit items-center gap-2" on:click={openCreateForm}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="h-4 w-4" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
                         Add user
-                    </button>
+                    </Button>
                 </div>
 
                 <div class="mb-5 flex flex-wrap items-center gap-3 text-xs">
                     <span class="rounded-full bg-blue-50 px-2.5 py-1 font-semibold text-blue-700">{activeCount} active users</span>
-                    <span class="text-slate-400">Preview data only · changes are not persisted</span>
+                    <span class="rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">{pendingCount} pending registrations</span>
                 </div>
 
                 {#if successMessage}
@@ -160,7 +195,21 @@
                     <div class="mb-5 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800" role="alert">{errorMessage}</div>
                 {/if}
 
-                <section class="rounded-lg border border-slate-200 bg-white">
+                {#if pendingRegistrations.length}
+                    <section class="mb-5 rounded-xl border border-amber-200 bg-amber-50/50 shadow-sm">
+                        <div class="border-b border-amber-200 px-4 py-4"><h2 class="text-sm font-semibold text-slate-900">Pending registration requests</h2><p class="mt-1 text-xs text-slate-600">Review applicant details and assign the final role before approving.</p></div>
+                        <div class="divide-y divide-amber-100">
+                            {#each pendingRegistrations as applicant (applicant.id)}
+                                <div class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                                    <div><p class="text-xs font-semibold text-slate-800">{applicant.name} <span class="font-normal text-slate-500">· {applicant.email}</span></p><p class="mt-1 text-[11px] text-slate-500">Requested: {roleLabel(applicant.requested_role)} · {applicant.affiliation}</p><p class="mt-1 text-[11px] text-slate-400">Submitted {applicant.submitted_at ?? "recently"}</p></div>
+                                    <div class="flex gap-2"><button type="button" class="rounded-md bg-slate-900 px-3 py-2 text-[11px] font-semibold text-white hover:bg-slate-700" on:click={() => approveRegistration(applicant)}>Approve and assign</button><button type="button" class="rounded-md border border-rose-200 px-3 py-2 text-[11px] font-semibold text-rose-700 hover:bg-rose-50" on:click={() => rejectRegistration(applicant)}>Reject</button></div>
+                                </div>
+                            {/each}
+                        </div>
+                    </section>
+                {/if}
+
+                <section class="rounded-xl border border-slate-200 bg-white shadow-sm">
                     <div class="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                         <div>
                             <h2 class="text-sm font-semibold text-slate-900">Store users</h2>
@@ -184,7 +233,7 @@
                                 <select bind:value={statusFilter} class="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-32">
                                     <option value="">All status</option>
                                     <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
+                                    <option value="suspended">Suspended</option>
                                 </select>
                             </label>
                         </div>
@@ -213,9 +262,9 @@
                                         <tr class="transition-colors hover:bg-slate-50/70">
                                             <td class="px-5 py-3.5"><div class="flex items-center gap-3"><div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-semibold text-blue-700">{initials(user.name)}</div><div class="min-w-0"><p class="truncate text-xs font-semibold text-slate-800">{user.name}</p><p class="truncate text-[11px] text-slate-400">{user.email}</p></div></div></td>
                                             <td class="py-3.5 text-xs text-slate-600">{roleLabel(user.role)}</td>
-                                            <td class="py-3.5"><span class:bg-emerald-50={user.status === "active"} class:text-emerald-700={user.status === "active"} class:bg-slate-100={user.status === "inactive"} class:text-slate-500={user.status === "inactive"} class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold"><i class:h-1.5={user.status === "active"} class:h-1={user.status === "inactive"} class:bg-emerald-500={user.status === "active"} class:bg-slate-400={user.status === "inactive"} class="w-1.5 rounded-full"></i>{user.status === "active" ? "Active" : "Inactive"}</span></td>
+                                            <td class="py-3.5"><span class:bg-emerald-50={user.status === "active"} class:text-emerald-700={user.status === "active"} class:bg-slate-100={user.status !== "active"} class:text-slate-500={user.status !== "active"} class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold"><i class:h-1.5={user.status === "active"} class:h-1={user.status !== "active"} class:bg-emerald-500={user.status === "active"} class:bg-slate-400={user.status !== "active"} class="w-1.5 rounded-full"></i>{user.status === "active" ? "Active" : user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span></td>
                                             <td class="py-3.5 text-xs text-slate-500">{user.last_login_at}</td>
-                                            <td class="px-5 py-3.5"><div class="flex justify-end gap-1"><button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900" on:click={() => openEditForm(user)}>Edit</button><button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900" on:click={() => toggleStatus(user)}>{user.status === "active" ? "Deactivate" : "Activate"}</button></div></td>
+                                            <td class="px-5 py-3.5"><div class="flex justify-end gap-1"><button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900" on:click={() => openEditForm(user)}>Edit</button>{#if user.status === "active" || user.status === "suspended"}<button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900" on:click={() => toggleStatus(user)}>{user.status === "active" ? "Suspend" : "Activate"}</button>{/if}<button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50" on:click={() => deleteUser(user)}>Delete</button></div></td>
                                         </tr>
                                     {/each}
                                 </tbody>
@@ -224,15 +273,16 @@
                     {/if}
                 </section>
 
-                <p class="mt-4 text-[11px] text-slate-400">Mock users are displayed for layout and interaction preview. Backend persistence and authorization will be connected later.</p>
+                <p class="mt-4 text-[11px] text-slate-400">Account changes and registration decisions are validated and persisted by the Laravel backend.</p>
             </div>
         </main>
     </div>
 </div>
 
 {#if showForm}
-    <div class="fixed inset-0 z-20 flex items-center justify-center bg-slate-950/20 p-4 sm:p-6" role="presentation" on:click={(event) => event.target === event.currentTarget && closeForm()}>
-        <dialog open class="static m-0 max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-xl sm:max-h-[calc(100vh-3rem)]" aria-labelledby="user-form-title">
+    <div class="fixed inset-0 z-50 overflow-y-auto bg-slate-950/30 p-4 sm:p-6" role="presentation" on:click={(event) => event.target === event.currentTarget && closeForm()}>
+        <div class="flex min-h-full items-center justify-center">
+        <dialog open class="m-0 max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-xl sm:max-h-[calc(100vh-3rem)]" aria-labelledby="user-form-title">
             <div class="flex items-start justify-between">
                 <div><h2 id="user-form-title" class="text-base font-semibold text-slate-950">{editingUserId ? "Edit user" : "Add user"}</h2><p class="mt-1 text-xs text-slate-500">Preview form · no changes are sent to a backend.</p></div>
                 <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label="Close form" on:click={closeForm}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
@@ -240,9 +290,10 @@
             <form class="mt-6 space-y-4" on:submit|preventDefault={saveUser}>
                 <div><label for="user-name" class="mb-1.5 block text-xs font-medium text-slate-700">Full name</label><input id="user-name" bind:value={form.name} class:border-rose-300={formErrors.name} class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="e.g. Maria Santos" /><p class:invisible={!formErrors.name} class="mt-1 text-[11px] text-rose-600">{formErrors.name || "Name is required."}</p></div>
                 <div><label for="user-email" class="mb-1.5 block text-xs font-medium text-slate-700">Email address</label><input id="user-email" type="email" bind:value={form.email} class:border-rose-300={formErrors.email} class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="name@example.com" /><p class:invisible={!formErrors.email} class="mt-1 text-[11px] text-rose-600">{formErrors.email || "Enter a valid email address."}</p></div>
-                <div class="grid gap-4 sm:grid-cols-2"><div><label for="user-role" class="mb-1.5 block text-xs font-medium text-slate-700">Role</label><select id="user-role" bind:value={form.role} class:border-rose-300={formErrors.role} class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">{#each roles as role}<option value={role.value}>{role.label}</option>{/each}</select>{#if formErrors.role}<p class="mt-1 text-[11px] text-rose-600">{formErrors.role}</p>{/if}</div><div><label for="user-status" class="mb-1.5 block text-xs font-medium text-slate-700">Status</label><select id="user-status" bind:value={form.status} class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"><option value="active">Active</option><option value="inactive">Inactive</option></select></div></div>
+                <div class="grid gap-4 sm:grid-cols-2"><div><label for="user-role" class="mb-1.5 block text-xs font-medium text-slate-700">Role</label><select id="user-role" bind:value={form.role} class:border-rose-300={formErrors.role} class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">{#each roles as role}<option value={role.value}>{role.label}</option>{/each}</select>{#if formErrors.role}<p class="mt-1 text-[11px] text-rose-600">{formErrors.role}</p>{/if}</div><div><label for="user-status" class="mb-1.5 block text-xs font-medium text-slate-700">Status</label><select id="user-status" bind:value={form.status} class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"><option value="active">Active</option><option value="suspended">Suspended</option></select></div></div>
                 <div class="flex justify-end gap-2 border-t border-slate-100 pt-5"><button type="button" class="rounded-md border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50" on:click={closeForm}>Cancel</button><button type="submit" class="rounded-md bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white hover:bg-slate-700">{editingUserId ? "Save changes" : "Save user"}</button></div>
             </form>
         </dialog>
+        </div>
     </div>
 {/if}
