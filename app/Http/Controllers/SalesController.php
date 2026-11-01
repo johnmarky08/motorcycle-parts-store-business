@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Carbon\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -19,7 +20,12 @@ class SalesController extends Controller
     {
         $sales = Sale::with('items')
             ->when($request->string('search')->isNotEmpty(), fn ($query) => $query->where('transaction_number', 'like', '%' . $request->string('search') . '%'))
-            ->when($request->filled('date'), fn ($query) => $query->whereDate('transaction_date', $request->input('date')))
+            ->when($request->filled('date'), function ($query) use ($request) {
+                $day = Carbon::createFromFormat('!Y-m-d', $request->string('date')->toString(), config('app.timezone'));
+
+                $query->where('transaction_date', '>=', $day)
+                    ->where('transaction_date', '<', $day->copy()->addDay());
+            })
             ->when($request->string('payment_method')->isNotEmpty(), fn ($query) => $query->where('payment_method', $request->string('payment_method')))
             ->when($request->string('status')->isNotEmpty(), fn ($query) => $query->where('status', $request->string('status')))
             ->latest('transaction_date')

@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class SalesTest extends TestCase
@@ -67,5 +68,28 @@ class SalesTest extends TestCase
         $this->actingAs($user)->get("/sales/{$sale->id}")->assertSuccessful();
         $this->actingAs($other)->get('/sales')->assertForbidden();
         $this->actingAs($other)->get("/sales/{$sale->id}")->assertForbidden();
+    }
+
+    public function test_date_filter_uses_the_selected_local_calendar_day(): void
+    {
+        [$user, $product] = $this->setupProduct();
+        $day = Carbon::create(2026, 10, 31, 0, 0, 0, config('app.timezone'));
+
+        foreach ([$day->copy()->addHours(23)->addMinutes(59), $day->copy()->addDay()] as $index => $date) {
+            Sale::create([
+                'user_id' => $user->id,
+                'transaction_number' => 'TX-DATE-' . $index,
+                'idempotency_key' => (string) Str::uuid(),
+                'transaction_date' => $date,
+                'status' => 'completed',
+                'payment_method' => 'Cash',
+                'total_amount' => 100,
+            ]);
+        }
+
+        $this->actingAs($user)->get('/sales?date=2026-10-31')
+            ->assertInertia(fn ($page) => $page->where('transactions.total', 1));
+        $this->actingAs($user)->get('/sales')
+            ->assertInertia(fn ($page) => $page->where('transactions.total', 2));
     }
 }

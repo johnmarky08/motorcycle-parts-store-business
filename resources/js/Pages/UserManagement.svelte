@@ -10,14 +10,7 @@
     export let pendingCount = 0;
     export let pendingRegistrations = [];
 
-    const mockUsers = [
-        { id: 1, name: "John Dela Cruz", email: "john@example.com", role: "admin", status: "active", last_login_at: "Today, 9:42 AM" },
-        { id: 2, name: "Maria Santos", email: "maria.santos@example.com", role: "inventory_clerk", status: "active", last_login_at: "Today, 8:16 AM" },
-        { id: 3, name: "Carlo Reyes", email: "carlo.reyes@example.com", role: "sales_personnel", status: "active", last_login_at: "Yesterday, 4:28 PM" },
-        { id: 4, name: "Angela Garcia", email: "angela.garcia@example.com", role: "instructor", status: "suspended", last_login_at: "Oct 21, 2026" },
-        { id: 5, name: "Paolo Mendoza", email: "paolo.mendoza@example.com", role: "inventory_clerk", status: "active", last_login_at: "Oct 20, 2026" },
-    ];
-    let users = initialUsers.length ? initialUsers.map((user) => ({ ...user })) : mockUsers;
+    let users = initialUsers.map((user) => ({ ...user }));
 
     const roles = [
         { value: "admin", label: "Admin" },
@@ -37,6 +30,7 @@
     let formErrors = {};
     let form = emptyForm();
     let mobileMenuOpen = false;
+    let processingUserId = null;
 
     function emptyForm() {
         return { name: "", email: "", role: "inventory_clerk", status: "active" };
@@ -59,6 +53,10 @@
 
     function roleLabel(value) {
         return roles.find((role) => role.value === value)?.label ?? value;
+    }
+
+    function isCurrentUser(user) {
+        return auth?.user?.id === user.id;
     }
 
     function initials(name) {
@@ -132,28 +130,50 @@
     }
 
     function toggleStatus(user) {
+        if (processingUserId) return;
+        processingUserId = user.id;
         router.patch(`/user-management/${user.id}/status`, {}, {
             preserveScroll: true,
             onSuccess: () => (successMessage = "User status updated successfully."),
+            onError: (errors) => (errorMessage = errors.message ?? "The user status could not be updated."),
+            onFinish: () => (processingUserId = null),
         });
     }
 
     function approveRegistration(user) {
+        if (processingUserId) return;
         const role = window.prompt("Assign a final role: instructor, inventory_clerk, or sales_personnel", user.requested_role || "sales_personnel");
         if (!["instructor", "inventory_clerk", "sales_personnel"].includes(role)) return;
-        router.patch(`/user-management/${user.id}/approve`, { role }, { preserveScroll: true });
+        processingUserId = user.id;
+        router.patch(`/user-management/${user.id}/approve`, { role }, {
+            preserveScroll: true,
+            onSuccess: () => (successMessage = "Registration approved successfully."),
+            onError: (errors) => (errorMessage = errors.message ?? "The registration could not be approved."),
+            onFinish: () => (processingUserId = null),
+        });
     }
 
     function rejectRegistration(user) {
+        if (processingUserId) return;
         if (!window.confirm(`Reject ${user.name}'s registration?`)) return;
-        router.patch(`/user-management/${user.id}/reject`, {}, { preserveScroll: true });
+        processingUserId = user.id;
+        router.patch(`/user-management/${user.id}/reject`, {}, {
+            preserveScroll: true,
+            onSuccess: () => (successMessage = "Registration rejected."),
+            onError: (errors) => (errorMessage = errors.message ?? "The registration could not be rejected."),
+            onFinish: () => (processingUserId = null),
+        });
     }
 
     function deleteUser(user) {
+        if (processingUserId) return;
         if (!window.confirm(`Delete ${user.name}? This action cannot be undone.`)) return;
+        processingUserId = user.id;
         router.delete(`/user-management/${user.id}`, {
             preserveScroll: true,
             onSuccess: () => (successMessage = "User deleted successfully."),
+            onError: (errors) => (errorMessage = errors.message ?? "The user could not be deleted."),
+            onFinish: () => (processingUserId = null),
         });
     }
 </script>
@@ -264,7 +284,7 @@
                                             <td class="py-3.5 text-xs text-slate-600">{roleLabel(user.role)}</td>
                                             <td class="py-3.5"><span class:bg-emerald-50={user.status === "active"} class:text-emerald-700={user.status === "active"} class:bg-slate-100={user.status !== "active"} class:text-slate-500={user.status !== "active"} class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold"><i class:h-1.5={user.status === "active"} class:h-1={user.status !== "active"} class:bg-emerald-500={user.status === "active"} class:bg-slate-400={user.status !== "active"} class="w-1.5 rounded-full"></i>{user.status === "active" ? "Active" : user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span></td>
                                             <td class="py-3.5 text-xs text-slate-500">{user.last_login_at}</td>
-                                            <td class="px-5 py-3.5"><div class="flex justify-end gap-1"><button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900" on:click={() => openEditForm(user)}>Edit</button>{#if user.status === "active" || user.status === "suspended"}<button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900" on:click={() => toggleStatus(user)}>{user.status === "active" ? "Suspend" : "Activate"}</button>{/if}<button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50" on:click={() => deleteUser(user)}>Delete</button></div></td>
+                                            <td class="px-5 py-3.5"><div class="flex justify-end gap-1"><button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900" on:click={() => openEditForm(user)}>Edit</button>{#if user.status === "active" || user.status === "suspended"}<button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900" disabled={isCurrentUser(user) || processingUserId !== null} title={isCurrentUser(user) ? "You cannot suspend or activate your own account." : ""} on:click={() => toggleStatus(user)}>{user.status === "active" ? "Suspend" : "Activate"}</button>{/if}<button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50" disabled={isCurrentUser(user) || processingUserId !== null} title={isCurrentUser(user) ? "You cannot delete your own account." : ""} on:click={() => deleteUser(user)}>Delete</button></div></td>
                                         </tr>
                                     {/each}
                                 </tbody>

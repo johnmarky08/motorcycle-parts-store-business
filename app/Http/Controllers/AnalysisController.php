@@ -213,7 +213,7 @@ class AnalysisController extends Controller
         $process = new Process([$python, base_path('ml/pipeline.py'), ...$arguments], base_path());
         $process->setTimeout(120);
         if (PHP_OS_FAMILY === 'Windows') {
-            $process->setOptions(['create_new_console' => true]);
+            $process->setOptions(['create_process_group' => true]);
             $process->setEnv([
                 'SystemRoot' => getenv('SystemRoot') ?: 'C:\\Windows',
                 'WINDIR' => getenv('WINDIR') ?: 'C:\\Windows',

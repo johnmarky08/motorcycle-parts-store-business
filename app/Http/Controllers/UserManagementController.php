@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\RegistrationAudit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -50,23 +51,35 @@ class UserManagementController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        $user->update($this->validated($request, $user));
+        $data = $this->validated($request, $user);
+        DB::transaction(function () use ($data, $user) {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            $this->assertAccountChangeAllowed($lockedUser, $data['role'], $data['status']);
+            $lockedUser->update($data);
+        });
 
         return back()->with('status', 'User updated successfully.');
     }
 
     public function destroy(User $user): RedirectResponse
     {
-        abort_if(auth()->id() === $user->id, 422, 'You cannot delete your own account.');
-        $user->delete();
+        DB::transaction(function () use ($user) {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            $this->assertAccountChangeAllowed($lockedUser, null, null, true);
+            $lockedUser->delete();
+        });
 
         return back()->with('status', 'User deleted successfully.');
     }
 
     public function toggleStatus(User $user): RedirectResponse
     {
-        abort_if(auth()->id() === $user->id, 422, 'You cannot deactivate your own account.');
-        $user->update(['status' => $user->status === 'active' ? 'suspended' : 'active']);
+        DB::transaction(function () use ($user) {
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            $nextStatus = $lockedUser->status === 'active' ? 'suspended' : 'active';
+            $this->assertAccountChangeAllowed($lockedUser, $lockedUser->role, $nextStatus);
+            $lockedUser->update(['status' => $nextStatus]);
+        });
 
         return back()->with('status', 'User status updated successfully.');
     }
@@ -80,6 +93,30 @@ class UserManagementController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended'])],
             'password' => ['nullable', 'string', 'min:8'],
         ]);
+    }
+
+    private function assertAccountChangeAllowed(User $user, ?string $role, ?string $status, bool $deleting = false): void
+    {
+        abort_if(
+            auth()->id() === $user->id
+                && ($deleting || $role !== $user->role || $status !== $user->status),
+            422,
+            'You cannot suspend, deactivate, demote, or delete your own account.'
+        );
+
+        $removesActiveAdmin = $user->role === 'admin'
+            && $user->status === 'active'
+            && ($deleting || $role !== 'admin' || $status !== 'active');
+
+        abort_if(
+            $removesActiveAdmin && User::query()
+                ->where('role', 'admin')
+                ->where('status', 'active')
+                ->lockForUpdate()
+                ->count() <= 1,
+            422,
+            'The last active administrator cannot be removed or deactivated.'
+        );
     }
 
     public function approve(Request $request, User $user): RedirectResponse
