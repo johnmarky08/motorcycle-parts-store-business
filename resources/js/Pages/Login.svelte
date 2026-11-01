@@ -1,13 +1,16 @@
 <script>
-    import { onDestroy } from "svelte";
+    import { router } from "@inertiajs/svelte";
+    import Button from "../lib/components/ui/Button.svelte";
+    import Checkbox from "../lib/components/ui/Checkbox.svelte";
+    import Input from "../lib/components/ui/Input.svelte";
 
     let email = "";
     let password = "";
     let rememberMe = false;
     let showPassword = false;
-    let status = "idle";
-    let errors = {};
-    let submitTimer;
+    let processing = false;
+    export let errors = {};
+    export let status = null;
 
     function validate() {
         const nextErrors = {};
@@ -22,22 +25,21 @@
             nextErrors.password = "Enter your password.";
         }
 
-        errors = nextErrors;
         return Object.keys(nextErrors).length === 0;
     }
 
     function submitLogin() {
-        status = "idle";
         if (!validate()) return;
 
-        window.clearTimeout(submitTimer);
-        status = "loading";
-        submitTimer = window.setTimeout(() => {
-            status = "invalid";
-        }, 700);
+        processing = true;
+        router.post("/login", {
+            email: email.trim(),
+            password,
+            remember: rememberMe,
+        }, {
+            onFinish: () => (processing = false),
+        });
     }
-
-    onDestroy(() => window.clearTimeout(submitTimer));
 </script>
 
 <svelte:head>
@@ -86,28 +88,31 @@
 
                 <div class="mt-6 flex items-start gap-3 rounded-md border border-blue-100 bg-blue-50/70 px-3.5 py-3 text-xs leading-5 text-blue-800">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 10v6M12 7h.01" /></svg>
-                    <p><span class="font-semibold">Preview only —</span> authentication is not connected. No credentials are verified or stored.</p>
+                    <p><span class="font-semibold">Secure access —</span> sign in with an active account created by an administrator.</p>
                 </div>
 
-                {#if status === "invalid"}
+                {#if errors.email && !processing}
                     <div class="mt-5 rounded-md border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs leading-5 text-rose-700" role="alert">
                         <p class="font-semibold">Unable to sign in</p>
-                        <p class="mt-0.5">Invalid credentials. This preview cannot verify accounts until backend authentication is connected.</p>
+                        <p class="mt-0.5">{errors.email}</p>
                     </div>
                 {/if}
+                {#if status}
+                    <div class="mt-5 rounded-md border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-xs leading-5 text-emerald-700" role="status">{status}</div>
+                {/if}
 
-                <form class="mt-6 space-y-5" on:submit|preventDefault={submitLogin} novalidate>
+                <form class="mt-6 space-y-5" onsubmit={(event) => { event.preventDefault(); submitLogin(); }} novalidate>
                     <div>
                         <label for="login-email" class="mb-1.5 block text-xs font-medium text-slate-700">Email address <span class="text-rose-600">*</span></label>
-                        <input id="login-email" bind:value={email} type="email" autocomplete="username" aria-invalid={errors.email ? "true" : "false"} aria-describedby={errors.email ? "login-email-error" : undefined} class:border-rose-300={errors.email} class="h-11 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="you@example.com" />
+                        <Input id="login-email" bind:value={email} type="email" autocomplete="username" aria-invalid={errors.email ? "true" : "false"} aria-describedby={errors.email ? "login-email-error" : undefined} className={`h-11 ${errors.email ? "border-rose-300" : ""}`} placeholder="you@example.com" />
                         {#if errors.email}<p id="login-email-error" class="mt-1.5 text-[11px] text-rose-600">{errors.email}</p>{/if}
                     </div>
 
                     <div>
                         <label for="login-password" class="mb-1.5 block text-xs font-medium text-slate-700">Password <span class="text-rose-600">*</span></label>
                         <div class="relative">
-                            <input id="login-password" bind:value={password} type={showPassword ? "text" : "password"} autocomplete="current-password" aria-invalid={errors.password ? "true" : "false"} aria-describedby={errors.password ? "login-password-error" : undefined} class:border-rose-300={errors.password} class="h-11 w-full rounded-md border border-slate-200 px-3 pr-12 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="Enter your password" />
-                            <button type="button" class="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Hide password" : "Show password"} on:click={() => (showPassword = !showPassword)}>
+                            <Input id="login-password" bind:value={password} type={showPassword ? "text" : "password"} autocomplete="current-password" aria-invalid={errors.password ? "true" : "false"} aria-describedby={errors.password ? "login-password-error" : undefined} className={`h-11 pr-12 ${errors.password ? "border-rose-300" : ""}`} placeholder="Enter your password" />
+                            <button type="button" class="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Hide password" : "Show password"} onclick={() => (showPassword = !showPassword)}>
                                 {#if showPassword}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.2A10.7 10.7 0 0 1 12 5c5.5 0 9 7 9 7a17.4 17.4 0 0 1-2.1 2.9M6.5 6.5C3.9 8.3 3 12 3 12s3.5 7 9 7c1.4 0 2.7-.4 3.8-.9" /></svg>{:else}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true"><path d="M3 12s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7Z" /><circle cx="12" cy="12" r="2.5" /></svg>{/if}
                             </button>
                         </div>
@@ -115,16 +120,20 @@
                     </div>
 
                     <label class="flex items-center gap-2 text-xs text-slate-600">
-                        <input bind:checked={rememberMe} type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                        Remember me <span class="text-slate-400">(preview only)</span>
+                        <Checkbox bind:checked={rememberMe} />
+                        Remember me                         <span class="text-slate-400">(this device)</span>
                     </label>
 
-                    <button type="submit" disabled={status === "loading"} class="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-slate-900 px-4 text-sm font-semibold text-white transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70">
-                        {#if status === "loading"}<span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span>Checking preview…{:else}Sign in{/if}
-                    </button>
+                    <div class="flex justify-end">
+                        <div class="flex gap-3"><a href="/register" class="text-xs font-medium text-blue-700 hover:text-blue-900">Request access</a><a href="/forgot-password" class="text-xs font-medium text-blue-700 hover:text-blue-900">Forgot password?</a></div>
+                    </div>
+
+                    <Button type="submit" disabled={processing} className="h-9 w-full gap-2">
+                        {#if processing}<span class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true"></span>Signing in…{:else}Sign in{/if}
+                    </Button>
                 </form>
 
-                <p class="mt-8 text-center text-[11px] leading-5 text-slate-400">Your assigned <span class="font-semibold text-slate-500">user_level</span> will determine your role after real authentication is implemented. Role selection is intentionally not available on this form.</p>
+                <p class="mt-8 text-center text-[11px] leading-5 text-slate-400">Accounts are created and assigned a role by an administrator. Role selection is intentionally not available on this form.</p>
             </div>
         </section>
     </div>

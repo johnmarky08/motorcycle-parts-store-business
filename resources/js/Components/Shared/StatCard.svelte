@@ -1,4 +1,6 @@
 <script>
+    import * as Card from "../../lib/components/ui/card/index.js";
+    import Badge from "../../lib/components/ui/Badge.svelte";
     export let label;
     export let value;
     export let change;
@@ -6,7 +8,8 @@
     export let icon = "chart";
 </script>
 
-<article class="rounded-lg border border-slate-200 bg-white p-5">
+<Card.Root class="rounded-xl shadow-sm transition-shadow hover:shadow-md">
+<Card.Content class="p-5">
     <div class="flex items-start justify-between">
         <div>
             <p class="text-xs font-medium text-slate-500">{label}</p>
@@ -25,7 +28,8 @@
         </div>
     </div>
     <div class="mt-4 flex items-center gap-1.5 text-xs">
-        <span class:text-rose-600={trend === "down"} class:text-emerald-600={trend !== "down"} class="font-semibold">{trend === "down" ? "↓" : "↑"} {change}</span>
+        <Badge variant={trend === "down" ? "destructive" : "success"}>{trend === "down" ? "↓" : "↑"} {change}</Badge>
         <span class="text-slate-400">vs last month</span>
     </div>
-</article>
+</Card.Content>
+</Card.Root>
