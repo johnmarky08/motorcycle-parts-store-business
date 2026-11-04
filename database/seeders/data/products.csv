@@ -1,0 +1,64 @@
+id,sku,name,category,description,selling_price,stock_quantity,reorder_threshold
+1,BP-KN-004,Kawasaki Ninja Brake Pad,Brake System,Front brake pad set for Kawasaki Ninja models.,1250.00,74,15
+2,BP-HC-005,Honda Click 125 Front Brake Pad,Brake System,Semi-metallic front brake pad for Honda Click 125.,380.00,126,20
+3,BS-YM-006,Yamaha Mio Sporty Brake Shoe,Brake System,Rear brake shoe set for Yamaha Mio Sporty.,260.00,73,20
+4,BP-SR-014,Suzuki Raider 150 Brake Pad,Brake System,Front brake pad set for Suzuki Raider 150.,420.00,74,15
+5,BS-HB-013,Honda Beat Rear Brake Shoe,Brake System,Rear brake shoe set for Honda Beat.,290.00,77,15
+6,BP-BR-010,Brembo Universal Racing Brake Pad,Brake System,High-performance sintered brake pad for big bikes.,2650.00,33,6
+7,BD-UNI-011,Brake Disc Rotor 220mm,Brake System,Floating 220mm stainless brake disc rotor.,1850.00,0,10
+8,BH-UNI-015,Stainless Brake Hose Kit,Brake System,Braided stainless brake hose kit for improved lever feel.,1480.00,35,6
+9,PK-HT-021,Honda TMX 155 Piston Kit,Engine,Standard-size piston kit with rings for Honda TMX 155.,1850.00,48,10
+10,GK-YN-022,Yamaha NMAX Head Gasket,Engine,Cylinder head gasket for Yamaha NMAX 155.,540.00,36,6
+11,CC-SR-015,Suzuki Raider Clutch Cable,Engine,Replacement clutch cable for Suzuki Raider.,220.00,48,6
+12,RS-HC-023,Honda Click CVT Roller Set,Engine,CVT weight roller set for Honda Click scooters.,650.00,82,15
+13,PS-YM-024,Yamaha Mio Pulley Set,Engine,Front pulley set for Yamaha Mio models.,1980.00,33,10
+14,OS-UNI-025,Engine Oil Seal Kit,Engine,Universal engine oil seal assortment kit.,340.00,38,6
+15,CB-HX-026,Honda XRM Carburetor Rebuild Kit,Engine,"Jets, needle and gasket rebuild kit for Honda XRM.",780.00,6,6
+16,RC-UNI-027,Radiator Coolant 1L,Engine,"Pre-mixed long-life radiator coolant, 1 liter.",285.00,100,15
+17,TC-UNI-028,Universal Throttle Cable,Engine,Universal throttle cable with adjustable ends.,190.00,27,10
+18,SP-NGK-009,NGK Iridium Spark Plug,Electrical,Long-life iridium spark plug for common motorcycle engines.,520.00,102,20
+19,SP-NGK-031,NGK CR7HSA Spark Plug,Electrical,Standard NGK spark plug for 110-150cc engines.,145.00,97,20
+20,SL-LED-030,LED Signal Light Set,Electrical,Pair of amber LED turn signal lights.,650.00,54,6
+21,BT-12V-032,Motorcycle Battery 12V 5Ah,Electrical,Maintenance-free 12V 5Ah motorcycle battery.,1250.00,72,15
+22,HL-YA-033,Yamaha Aerox LED Headlight Bulb,Electrical,High-brightness LED headlight bulb for Yamaha Aerox.,890.00,55,10
+23,HN-UNI-034,Universal Horn 12V,Electrical,Compact 12V disc horn.,360.00,41,10
+24,RR-HC-035,Honda Click Regulator Rectifier,Electrical,Voltage regulator rectifier for Honda Click.,1150.00,30,6
+25,IC-YM-036,Yamaha Mio Ignition Coil,Electrical,Ignition coil assembly for Yamaha Mio models.,780.00,31,10
+26,CH-DID-428,DID 428H Chain Set,Drivetrain,Heavy-duty chain and sprocket set.,2380.00,85,15
+27,CH-RK-520,RK 520 O-Ring Chain,Drivetrain,Sealed O-ring chain for 250cc and above.,3450.00,28,6
+28,DB-HC-018,Honda Click Drive Belt,Drivetrain,CVT drive belt for Honda Click scooters.,1450.00,0,20
+29,DB-YN-038,Yamaha NMAX Drive Belt,Drivetrain,CVT drive belt for Yamaha NMAX 155.,1680.00,7,10
+30,CA-UNI-09,Universal Chain Adjuster,Drivetrain,Aluminum chain adjuster pair.,280.00,62,6
+31,FS-UNI-039,Front Sprocket 14T,Drivetrain,14-tooth steel front sprocket.,340.00,43,10
+32,RS-UNI-040,Rear Sprocket 428-42T,Drivetrain,42-tooth 428 pitch rear sprocket.,620.00,25,10
+33,CC-HX-041,Honda XRM Clutch Cable,Drivetrain,Clutch cable for Honda XRM 125.,210.00,30,10
+34,TR-MCP-017,Michelin City Pro Tire 80/90-17,Tires,Urban commuter tire with wet-road grip.,3150.00,4,10
+35,TR-PDR-042,Pirelli Diablo Rosso 120/70-17,Tires,Sport-touring front tire.,5850.00,34,6
+36,TR-KND-043,Kenda K324 Tire 70/90-14,Tires,Economy scooter tire.,1250.00,78,15
+37,TR-CPL-044,Corsa Platinum Tire 90/80-17,Tires,Street tire with all-round grip.,1850.00,67,15
+38,IT-17-045,Inner Tube 17 inch,Tires,Butyl inner tube for 17-inch rims.,220.00,125,20
+39,IT-14-046,Inner Tube 14 inch,Tires,Butyl inner tube for 14-inch rims.,195.00,68,15
+40,VS-UNI-047,Tubeless Valve Stem Set,Tires,"Rubber snap-in tubeless valve stems, set of 4.",90.00,64,10
+41,TS-UNI-048,Tire Sealant 500ml,Tires,Puncture-sealing tire sealant.,420.00,28,6
+42,AF-YM-021,Yamaha MT-15 Air Filter,Filters,Replacement air filter for Yamaha MT-15.,680.00,8,15
+43,AF-HC-049,Honda Click Air Filter,Filters,OEM-style air filter element for Honda Click.,340.00,79,20
+44,AF-KN-050,K&N Universal Air Filter,Filters,Washable high-flow universal air filter.,2250.00,22,6
+45,OF-HT-051,Honda TMX Oil Filter,Filters,Oil filter for Honda TMX 125/155.,150.00,73,15
+46,OF-YN-052,Yamaha NMAX Oil Filter,Filters,Oil filter for Yamaha NMAX.,185.00,64,15
+47,FF-UNI-053,Universal Fuel Filter,Filters,Inline universal fuel filter.,120.00,35,10
+48,OL-MT-710,Motul 7100 10W-40 1L,Lubricants,"Fully synthetic 4T engine oil, 1 liter.",890.00,83,15
+49,OL-MT-300,Motul 3000 20W-50 1L,Lubricants,"Mineral 4T engine oil, 1 liter.",520.00,91,20
+50,OL-CS-054,Castrol Power1 10W-40 1L,Lubricants,"Semi-synthetic 4T engine oil, 1 liter.",650.00,73,15
+51,OL-SH-055,Shell Advance AX7 10W-40 1L,Lubricants,"Semi-synthetic motorcycle oil, 1 liter.",480.00,76,20
+52,OL-PT-056,Petron Sprint 4T 1L,Lubricants,"Everyday 4T engine oil, 1 liter.",320.00,98,20
+53,GO-UNI-057,Gear Oil 80W-90 120ml,Lubricants,"Transmission gear oil for scooters, 120 ml.",85.00,9,20
+54,CL-UNI-058,Chain Lube 400ml,Lubricants,"Spray chain lubricant, 400 ml.",260.00,74,15
+55,BF-DOT4-012,Brake Fluid DOT 4 250ml,Lubricants,"DOT 4 brake fluid, 250 ml.",195.00,87,15
+56,UC-UNI-037,Handlebar USB Charger,Accessories,Waterproof dual-port USB charger.,320.00,63,10
+57,PH-UNI-059,Universal Phone Holder,Accessories,Handlebar phone mount with vibration dampener.,450.00,54,10
+58,HM-HF-060,Half-Face Motorcycle Helmet,Accessories,ICC-certified half-face helmet.,1450.00,45,10
+59,RG-UNI-061,Riding Gloves,Accessories,Padded full-finger riding gloves.,680.00,62,10
+60,RC-WP-062,Waterproof Rain Cover,Accessories,Motorcycle rain cover with storage pouch.,520.00,59,10
+61,SM-UNI-063,Side Mirror Set,Accessories,"Universal side mirror pair, 10 mm thread.",420.00,42,15
+62,SC-HC-064,Honda Click Seat Cover,Accessories,Water-resistant seat cover for Honda Click.,580.00,3,10
+63,HG-UNI-065,Rubber Handle Grips,Accessories,Anti-slip rubber handle grips.,190.00,44,15

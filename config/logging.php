@@ -65,6 +65,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Security audit trail: sign-ins, access denials, role/status changes, uploads, model training.
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => 'info',
+            'days' => env('LOG_SECURITY_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

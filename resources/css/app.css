@@ -52,3 +52,62 @@ dialog[open] {
     inset: auto;
     transform: none;
 }
+
+
+/* ------------------------------------------------------------------ */
+/* Cursors: Tailwind v4 resets buttons to the default arrow.           */
+/* ------------------------------------------------------------------ */
+@layer base {
+    a[href],
+    button:not(:disabled),
+    summary,
+    select:not(:disabled),
+    label[for],
+    [role="button"]:not([aria-disabled="true"]),
+    [role="menuitem"],
+    [role="tab"],
+    [role="option"],
+    input[type="checkbox"]:not(:disabled),
+    input[type="radio"]:not(:disabled),
+    input[type="file"]:not(:disabled),
+    input[type="date"]:not(:disabled),
+    input[type="submit"]:not(:disabled),
+    input[type="button"]:not(:disabled) {
+        cursor: pointer;
+    }
+
+    button:disabled,
+    select:disabled,
+    input:disabled,
+    textarea:disabled,
+    [aria-disabled="true"] {
+        cursor: not-allowed;
+    }
+
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="date"]):not([type="submit"]):not([type="button"]):not(:disabled),
+    textarea:not(:disabled) {
+        cursor: text;
+    }
+
+    [aria-busy="true"] {
+        cursor: progress;
+    }
+}
+
+/* ------------------------------------------------------------------ */
+/* Inertia page-transition progress bar (matches the blue accent).     */
+/* ------------------------------------------------------------------ */
+#nprogress .bar {
+    height: 3px;
+    background: #2563eb;
+    box-shadow: 0 0 8px rgba(37, 99, 235, 0.45);
+}
+
+#nprogress .peg {
+    box-shadow: 0 0 10px #2563eb, 0 0 5px #2563eb;
+}
+
+#nprogress .spinner-icon {
+    border-top-color: #2563eb;
+    border-left-color: #2563eb;
+}

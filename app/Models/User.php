@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Enums\Role;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
@@ -54,5 +55,27 @@ class User extends Authenticatable
             'submitted_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    /** @param  Role|string  ...$roles */
+    public function hasRole(Role|string ...$roles): bool
+    {
+        foreach ($roles as $role) {
+            if ($this->role === ($role instanceof Role ? $role->value : $role)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function roleEnum(): ?Role
+    {
+        return Role::tryFrom((string) $this->role);
     }
 }

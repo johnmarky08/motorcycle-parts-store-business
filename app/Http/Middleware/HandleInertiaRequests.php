@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\NotificationFeed;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -27,7 +28,7 @@ class HandleInertiaRequests extends Middleware
     }
 
     /**
-     * Define the props that are shared by default.
+     * Define the props that are shared by default. Only non-sensitive user fields are shared.
      *
      * @see https://inertiajs.com/shared-data
      *
@@ -35,15 +36,20 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user()?->only(['id', 'name', 'email', 'role', 'status']),
+                'user' => $user ? [
+                    ...$user->only(['id', 'name', 'email', 'role', 'status']),
+                    'role_label' => $user->roleEnum()?->label() ?? $user->role,
+                ] : null,
             ],
-            'flash' => [
-                'status' => fn () => $request->session()->get('status'),
-                'error' => fn () => $request->session()->get('error'),
-            ],
+            'navigation' => fn () => $user?->roleEnum()?->navigation() ?? [],
+            'notifications' => fn () => $user ? NotificationFeed::for($user) : [],
+            'status' => fn () => $request->session()->get('status'),
+            'error' => fn () => $request->session()->get('error'),
         ];
     }
 }

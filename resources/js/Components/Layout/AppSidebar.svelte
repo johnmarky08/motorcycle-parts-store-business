@@ -1,7 +1,6 @@
 <script>
-    import { router } from "@inertiajs/svelte";
+    import { Link, page, router } from "@inertiajs/svelte";
     import { onMount } from "svelte";
-    import { roleDefinitions } from "../Config/previewRoles.js";
     import Button from "../../lib/components/ui/Button.svelte";
     import * as DropdownMenu from "../../lib/components/ui/dropdown-menu/index.js";
 
@@ -9,9 +8,10 @@
     export let mobileMenuOpen = false;
     export let auth = { user: null };
 
-    $: user = auth?.user;
-    $: role = roleDefinitions[user?.role];
-    $: navigation = role?.navigation ?? [];
+    // Navigation comes from the server, so it always matches what the role may actually open.
+    $: user = auth?.user ?? page.props.auth?.user;
+    $: role = { label: user?.role_label ?? user?.role };
+    $: navigation = page.props.navigation ?? [];
 
     function closeDrawer() {
         mobileMenuOpen = false;
@@ -92,9 +92,9 @@
         <div class="space-y-0.5">
             {#each navigation as item}
                 {#if item.href}
-                    <a href={item.href} onclick={isMobile ? closeDrawer : undefined} class:bg-slate-100={activeItem === item.label} class:text-slate-950={activeItem === item.label} class:font-semibold={activeItem === item.label} class="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950" aria-current={activeItem === item.label ? "page" : undefined}>
+                    <Link href={item.href} onclick={isMobile ? closeDrawer : undefined} class={`group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-[13px] font-medium transition-colors hover:bg-slate-50 hover:text-slate-950 ${activeItem === item.label ? "bg-slate-100 font-semibold text-slate-950" : "text-slate-600"}`} aria-current={activeItem === item.label ? "page" : undefined}>
                         {@render navigationIcon(item)}<span>{item.label}</span>{#if activeItem === item.label}<span class="ml-auto h-1.5 w-1.5 rounded-full bg-blue-600"></span>{/if}
-                    </a>
+                    </Link>
                 {/if}
             {/each}
         </div>

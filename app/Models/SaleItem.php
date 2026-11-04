@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Database\Factories\SaleItemFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SaleItem extends Model
 {
+    /** @use HasFactory<SaleItemFactory> */
+    use HasFactory;
+
     protected $fillable = ['sale_id', 'product_id', 'product_name', 'sku', 'quantity', 'unit_price', 'line_total'];
 
     protected function casts(): array

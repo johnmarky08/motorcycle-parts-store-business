@@ -15,7 +15,8 @@ class InventoryTest extends TestCase
 
     private function admin(): User
     {
-        return User::factory()->create(['role' => 'admin', 'status' => 'active']);
+        // Inventory is the inventory clerk's workspace (admins do not manage stock).
+        return User::factory()->create(['role' => 'inventory_clerk', 'status' => 'active']);
     }
 
     private function category(): Category

@@ -1,1 +1,3 @@
-transaction_date,product_id,product_name,category,quantity,unit_price,discount_rate,product_index,promotion,day_of_week,customer_factor,total_amount,day_index
+transaction_number,transaction_date,product_id,sku,product_name,category,quantity,unit_price,total_amount,payment_method
+TX-20260101-00001,2026-01-01 09:15:00,1,BP-KN-004,Kawasaki Ninja Brake Pad,Brake System,1,1250.00,1250.00,Cash
+TX-20260101-00001,2026-01-01 09:15:00,53,GO-UNI-057,Gear Oil 80W-90 120ml,Lubricants,2,85.00,170.00,Cash

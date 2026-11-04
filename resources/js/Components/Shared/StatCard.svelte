@@ -6,6 +6,7 @@
     export let change;
     export let trend = "up";
     export let icon = "chart";
+    export let note = "";
 </script>
 
 <Card.Root class="rounded-xl shadow-sm transition-shadow hover:shadow-md">
@@ -28,8 +29,8 @@
         </div>
     </div>
     <div class="mt-4 flex items-center gap-1.5 text-xs">
-        <Badge variant={trend === "down" ? "destructive" : "success"}>{trend === "down" ? "↓" : "↑"} {change}</Badge>
-        <span class="text-slate-400">vs last month</span>
+        <Badge variant={trend === "down" ? "destructive" : trend === "neutral" ? "secondary" : "success"}>{trend === "down" ? "↓ " : trend === "neutral" ? "" : "↑ "}{change}</Badge>
+        {#if note}<span class="text-slate-400">{note}</span>{/if}
     </div>
 </Card.Content>
 </Card.Root>

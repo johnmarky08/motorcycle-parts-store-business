@@ -1,5 +1,4 @@
 <script>
-    import { onMount } from "svelte";
     import { router } from "@inertiajs/svelte";
     import AppHeader from "../Components/Layout/AppHeader.svelte";
     import AppSidebar from "../Components/Layout/AppSidebar.svelte";
@@ -10,14 +9,8 @@
     export let pendingCount = 0;
     export let pendingRegistrations = [];
 
-    const mockUsers = [
-        { id: 1, name: "John Dela Cruz", email: "john@example.com", role: "admin", status: "active", last_login_at: "Today, 9:42 AM" },
-        { id: 2, name: "Maria Santos", email: "maria.santos@example.com", role: "inventory_clerk", status: "active", last_login_at: "Today, 8:16 AM" },
-        { id: 3, name: "Carlo Reyes", email: "carlo.reyes@example.com", role: "sales_personnel", status: "active", last_login_at: "Yesterday, 4:28 PM" },
-        { id: 4, name: "Angela Garcia", email: "angela.garcia@example.com", role: "instructor", status: "suspended", last_login_at: "Oct 21, 2026" },
-        { id: 5, name: "Paolo Mendoza", email: "paolo.mendoza@example.com", role: "inventory_clerk", status: "active", last_login_at: "Oct 20, 2026" },
-    ];
-    let users = initialUsers.length ? initialUsers.map((user) => ({ ...user })) : mockUsers;
+    // Always mirror the server data so approvals, edits and status changes show immediately.
+    $: users = initialUsers.map((user) => ({ ...user }));
 
     const roles = [
         { value: "admin", label: "Admin" },
@@ -31,7 +24,7 @@
     let statusFilter = "";
     let showForm = false;
     let editingUserId = null;
-    let loading = true;
+    let loading = false;
     let successMessage = "";
     let errorMessage = "";
     let formErrors = {};
@@ -52,10 +45,9 @@
 
     $: activeCount = users.filter((user) => user.status === "active").length;
 
-    onMount(() => {
-        const timer = window.setTimeout(() => (loading = false), 350);
-        return () => window.clearTimeout(timer);
-    });
+    function formatLogin(value) {
+        return value ? new Date(value).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" }) : "Not yet signed in";
+    }
 
     function roleLabel(value) {
         return roles.find((role) => role.value === value)?.label ?? value;
@@ -263,7 +255,7 @@
                                             <td class="px-5 py-3.5"><div class="flex items-center gap-3"><div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[10px] font-semibold text-blue-700">{initials(user.name)}</div><div class="min-w-0"><p class="truncate text-xs font-semibold text-slate-800">{user.name}</p><p class="truncate text-[11px] text-slate-400">{user.email}</p></div></div></td>
                                             <td class="py-3.5 text-xs text-slate-600">{roleLabel(user.role)}</td>
                                             <td class="py-3.5"><span class:bg-emerald-50={user.status === "active"} class:text-emerald-700={user.status === "active"} class:bg-slate-100={user.status !== "active"} class:text-slate-500={user.status !== "active"} class="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-semibold"><i class:h-1.5={user.status === "active"} class:h-1={user.status !== "active"} class:bg-emerald-500={user.status === "active"} class:bg-slate-400={user.status !== "active"} class="w-1.5 rounded-full"></i>{user.status === "active" ? "Active" : user.status.charAt(0).toUpperCase() + user.status.slice(1)}</span></td>
-                                            <td class="py-3.5 text-xs text-slate-500">{user.last_login_at}</td>
+                                            <td class="py-3.5 text-xs text-slate-500">{formatLogin(user.last_login_at)}</td>
                                             <td class="px-5 py-3.5"><div class="flex justify-end gap-1"><button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900" on:click={() => openEditForm(user)}>Edit</button>{#if user.status === "active" || user.status === "suspended"}<button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900" on:click={() => toggleStatus(user)}>{user.status === "active" ? "Suspend" : "Activate"}</button>{/if}<button type="button" class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50" on:click={() => deleteUser(user)}>Delete</button></div></td>
                                         </tr>
                                     {/each}
@@ -284,7 +276,7 @@
         <div class="flex min-h-full items-center justify-center">
         <dialog open class="m-0 max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-xl sm:max-h-[calc(100vh-3rem)]" aria-labelledby="user-form-title">
             <div class="flex items-start justify-between">
-                <div><h2 id="user-form-title" class="text-base font-semibold text-slate-950">{editingUserId ? "Edit user" : "Add user"}</h2><p class="mt-1 text-xs text-slate-500">Preview form · no changes are sent to a backend.</p></div>
+                <div><h2 id="user-form-title" class="text-base font-semibold text-slate-950">{editingUserId ? "Edit user" : "Add user"}</h2><p class="mt-1 text-xs text-slate-500">Admin-created users start with a private random password and choose their own with “Forgot password”.</p></div>
                 <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label="Close form" on:click={closeForm}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
             <form class="mt-6 space-y-4" on:submit|preventDefault={saveUser}>

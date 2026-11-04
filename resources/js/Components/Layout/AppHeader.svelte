@@ -1,53 +1,38 @@
 <script>
     import { onMount, tick } from "svelte";
+    import { page } from "@inertiajs/svelte";
     import Button from "../../lib/components/ui/Button.svelte";
 
     export let title = "Dashboard";
     export let mobileMenuOpen = false;
 
-    // Preview-only notifications. Replace with Inertia props when notification data is available.
-    let notifications = [
-        {
-            id: 1,
-            type: "stock",
-            title: "Low-stock products need attention",
-            description: "32 products are below their reorder threshold.",
-            timestamp: "12 minutes ago",
-            read: false,
-        },
-        {
-            id: 2,
-            type: "critical",
-            title: "Product is out of stock",
-            description: "Honda Click Drive Belt · DB-HC-018 has no remaining stock.",
-            timestamp: "48 minutes ago",
-            read: false,
-        },
-        {
-            id: 3,
-            type: "sales",
-            title: "Sales activity recorded",
-            description: "A new transaction increased today's sales total by ₱4,800.",
-            timestamp: "2 hours ago",
-            read: false,
-        },
-        {
-            id: 4,
-            type: "sales",
-            title: "Daily sales target reached",
-            description: "Your store reached 100% of the daily sales target.",
-            timestamp: "Yesterday",
-            read: true,
-        },
-    ];
+    // Notifications are built from live data on the server; "read" state is remembered per browser.
+    const STORAGE_KEY = "opa-read-notifications";
+    let readIds = [];
 
     let notificationsOpen = false;
     let notificationPanel;
     let notificationBell;
 
+    $: notifications = (page.props.notifications ?? []).map((notification) => ({ ...notification, read: readIds.includes(notification.id) }));
     $: unreadCount = notifications.filter((notification) => !notification.read).length;
 
+    function saveRead() {
+        try {
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(readIds.slice(-200)));
+        } catch (error) {
+            /* storage unavailable: the read state is simply not remembered */
+        }
+    }
+
     onMount(() => {
+        try {
+            const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "[]");
+            readIds = Array.isArray(stored) ? stored.filter((id) => typeof id === "string") : [];
+        } catch (error) {
+            readIds = [];
+        }
+
         const handleDocumentClick = (event) => {
             if (notificationsOpen && notificationPanel && !notificationPanel.contains(event.target) && notificationBell && !notificationBell.contains(event.target)) {
                 closeNotifications();
@@ -84,13 +69,13 @@
     }
 
     function markAsRead(id) {
-        notifications = notifications.map((notification) =>
-            notification.id === id ? { ...notification, read: true } : notification
-        );
+        if (!readIds.includes(id)) readIds = [...readIds, id];
+        saveRead();
     }
 
     function markAllAsRead() {
-        notifications = notifications.map((notification) => ({ ...notification, read: true }));
+        readIds = [...new Set([...readIds, ...(page.props.notifications ?? []).map((notification) => notification.id)])];
+        saveRead();
     }
 
 </script>

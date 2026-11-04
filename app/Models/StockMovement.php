@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Database\Factories\StockMovementFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StockMovement extends Model
 {
+    /** @use HasFactory<StockMovementFactory> */
+    use HasFactory;
+
     protected $fillable = ['product_id', 'user_id', 'movement_type', 'quantity', 'balance_after', 'note'];
 
     public function product(): BelongsTo

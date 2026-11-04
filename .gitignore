@@ -24,3 +24,8 @@ __pycache__/
 Homestead.json
 Homestead.yaml
 Thumbs.db
+/.venv
+/venv
+*.pyc
+/storage/app/ml
+/storage/inertia-devtools

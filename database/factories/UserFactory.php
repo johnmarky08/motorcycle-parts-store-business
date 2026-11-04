@@ -30,7 +30,51 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'role' => fake()->randomElement(['inventory_clerk', 'sales_personnel']),
+            'status' => 'active',
         ];
+    }
+
+    public function role(string $role): static
+    {
+        return $this->state(fn () => ['role' => $role]);
+    }
+
+    public function admin(): static
+    {
+        return $this->role('admin');
+    }
+
+    public function instructor(): static
+    {
+        return $this->role('instructor');
+    }
+
+    public function inventoryClerk(): static
+    {
+        return $this->role('inventory_clerk');
+    }
+
+    public function salesPersonnel(): static
+    {
+        return $this->role('sales_personnel');
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn () => ['status' => 'suspended']);
+    }
+
+    /** A registration waiting for administrator approval. */
+    public function pending(string $requestedRole = 'sales_personnel'): static
+    {
+        return $this->state(fn () => [
+            'status' => 'pending',
+            'requested_role' => $requestedRole,
+            'affiliation' => fake()->company(),
+            'registration_status_token' => Str::random(48),
+            'submitted_at' => now(),
+        ]);
     }
 
     /**

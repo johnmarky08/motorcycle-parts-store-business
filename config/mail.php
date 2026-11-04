@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'smtp'),
 
     /*
     |--------------------------------------------------------------------------
@@ -36,6 +36,11 @@ return [
     */
 
     'mailers' => [
+
+        // PHP's built-in mail() function (see App\Mail\PhpMailTransport).
+        'phpmail' => [
+            'transport' => 'phpmail',
+        ],
 
         'smtp' => [
             'transport' => 'smtp',
@@ -111,7 +116,7 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
+        'address' => env('MAIL_FROM_ADDRESS') ?: (env('MAIL_USERNAME') ?: 'noreply@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 

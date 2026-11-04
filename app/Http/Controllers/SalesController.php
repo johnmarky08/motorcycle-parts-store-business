@@ -8,6 +8,8 @@ use App\Models\StockMovement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Support\Like;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -18,7 +20,7 @@ class SalesController extends Controller
     public function index(Request $request): Response
     {
         $sales = Sale::with('items')
-            ->when($request->string('search')->isNotEmpty(), fn ($query) => $query->where('transaction_number', 'like', '%' . $request->string('search') . '%'))
+            ->when($request->string('search')->isNotEmpty(), fn ($query) => $query->where('transaction_number', 'like', '%' . Like::escape($request->string('search')->toString()) . '%'))
             ->when($request->filled('date'), fn ($query) => $query->whereDate('transaction_date', $request->input('date')))
             ->when($request->string('payment_method')->isNotEmpty(), fn ($query) => $query->where('payment_method', $request->string('payment_method')))
             ->when($request->string('status')->isNotEmpty(), fn ($query) => $query->where('status', $request->string('status')))
@@ -46,13 +48,14 @@ class SalesController extends Controller
     {
         $data = $request->validate([
             'idempotency_key' => ['required', 'string', 'uuid'],
-            'payment_method' => ['required', 'string', 'max:50'],
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
-            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'payment_method' => ['required', Rule::in(config('store.payment_methods'))],
+            'items' => ['required', 'array', 'min:1', 'max:50'],
+            'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:1000'],
         ]);
+        $data['items'] = collect($data['items'])->sortBy('product_id')->values()->all(); // consistent lock order avoids deadlocks
 
-        DB::transaction(function () use ($data, $request) {
+        $sale = DB::transaction(function () use ($data, $request) {
             abort_if(Sale::where('idempotency_key', $data['idempotency_key'])->exists(), 422, 'This sale has already been submitted.');
             $items = [];
             $total = 0;
@@ -91,7 +94,10 @@ class SalesController extends Controller
                 'total_amount' => $total,
             ]);
             $sale->items()->createMany($items);
+
+            return $sale;
         });
+        Log::channel('security')->info('sale.created', ['sale_id' => $sale->id, 'user_id' => $request->user()->id, 'total' => $sale->total_amount]);
 
         return back()->with('status', 'Sale completed successfully.');
     }

@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\RegistrationAudit;
+use App\Support\Like;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,7 +19,7 @@ class UserManagementController extends Controller
     {
         $users = User::query()
             ->when($request->string('search')->isNotEmpty(), fn ($query) => $query->where(function ($query) use ($request) {
-                $search = $request->string('search')->toString();
+                $search = Like::escape($request->string('search')->toString());
                 $query->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%");
             }))
             ->when($request->string('role')->isNotEmpty(), fn ($query) => $query->where('role', $request->string('role')))
@@ -50,7 +53,18 @@ class UserManagementController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        $user->update($this->validated($request, $user));
+        $data = $this->validated($request, $user);
+        if (empty($data['password'])) {
+            unset($data['password']); // a blank password field keeps the current password
+        }
+        if ($request->user()->is($user) && ($data['role'] !== $user->role || $data['status'] !== $user->status)) {
+            return back()->withErrors(['role' => 'You cannot change your own role or status.']);
+        }
+        if ($this->removesLastAdmin($user, $data['role'], $data['status'])) {
+            return back()->withErrors(['role' => 'At least one active admin account must remain.']);
+        }
+        $user->update($data);
+        Log::channel('security')->info('user.updated', ['by' => $request->user()->id, 'user_id' => $user->id, 'role' => $user->role, 'status' => $user->status]);
 
         return back()->with('status', 'User updated successfully.');
     }
@@ -58,7 +72,9 @@ class UserManagementController extends Controller
     public function destroy(User $user): RedirectResponse
     {
         abort_if(auth()->id() === $user->id, 422, 'You cannot delete your own account.');
+        abort_if($this->removesLastAdmin($user, 'none', 'deleted'), 422, 'At least one active admin account must remain.');
         $user->delete();
+        Log::channel('security')->info('user.deleted', ['by' => auth()->id(), 'user_id' => $user->id]);
 
         return back()->with('status', 'User deleted successfully.');
     }
@@ -66,7 +82,10 @@ class UserManagementController extends Controller
     public function toggleStatus(User $user): RedirectResponse
     {
         abort_if(auth()->id() === $user->id, 422, 'You cannot deactivate your own account.');
-        $user->update(['status' => $user->status === 'active' ? 'suspended' : 'active']);
+        $next = $user->status === 'active' ? 'suspended' : 'active';
+        abort_if($this->removesLastAdmin($user, $user->role, $next), 422, 'At least one active admin account must remain.');
+        $user->update(['status' => $next]);
+        Log::channel('security')->info('user.status_changed', ['by' => auth()->id(), 'user_id' => $user->id, 'status' => $next]);
 
         return back()->with('status', 'User status updated successfully.');
     }
@@ -74,19 +93,30 @@ class UserManagementController extends Controller
     private function validated(Request $request, ?User $user = null): array
     {
         return $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user)],
+            'name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\p{L}\p{M}\s.'\-]+$/u"],
+            'email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user)],
             'role' => ['required', Rule::in(['admin', 'instructor', 'inventory_clerk', 'sales_personnel'])],
             'status' => ['required', Rule::in(['active', 'suspended'])],
-            'password' => ['nullable', 'string', 'min:8'],
+            'password' => ['nullable', 'string', Password::defaults()],
         ]);
+    }
+
+    /** True when the change would leave the system without an active admin. */
+    private function removesLastAdmin(User $user, string $newRole, string $newStatus): bool
+    {
+        $wasActiveAdmin = $user->role === 'admin' && $user->status === 'active';
+        if (! $wasActiveAdmin || ($newRole === 'admin' && $newStatus === 'active')) {
+            return false;
+        }
+
+        return ! User::where('role', 'admin')->where('status', 'active')->where('id', '!=', $user->id)->exists();
     }
 
     public function approve(Request $request, User $user): RedirectResponse
     {
         abort_unless($user->status === 'pending', 422, 'Only pending registrations can be approved.');
         $data = $request->validate([
-            'role' => ['required', Rule::in(['instructor', 'inventory_clerk', 'sales_personnel'])],
+            'role' => ['required', Rule::in(['admin', 'instructor', 'inventory_clerk', 'sales_personnel'])],
         ]);
 
         $user->update(['role' => $data['role'], 'status' => 'active']);
@@ -104,6 +134,7 @@ class UserManagementController extends Controller
     {
         abort_unless($user->status === 'pending', 422, 'Only pending registrations can be rejected.');
         $user->update(['status' => 'rejected']);
+        Log::channel('security')->info('user.registration_rejected', ['by' => $request->user()->id, 'user_id' => $user->id]);
         RegistrationAudit::create([
             'applicant_id' => $user->id,
             'administrator_id' => $request->user()->id,

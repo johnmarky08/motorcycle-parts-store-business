@@ -1,5 +1,5 @@
 <script>
-    import { router } from "@inertiajs/svelte";
+    import { Link, router } from "@inertiajs/svelte";
     import Button from "../lib/components/ui/Button.svelte";
     import Checkbox from "../lib/components/ui/Checkbox.svelte";
     import Input from "../lib/components/ui/Input.svelte";
@@ -68,7 +68,7 @@
                     <p class="mt-4 text-sm leading-6 text-slate-300">A practical workspace for managing motorcycle parts, inventory, sales and analysis.</p>
                 </div>
             </div>
-            <p class="text-xs text-slate-400">Frontend preview · Authentication will be connected by the backend.</p>
+            <p class="text-xs text-slate-400">Authorized staff only. Activity on this system is logged.</p>
         </section>
 
         <section class="p-6 sm:p-10">
@@ -88,7 +88,7 @@
 
                 <div class="mt-6 flex items-start gap-3 rounded-md border border-blue-100 bg-blue-50/70 px-3.5 py-3 text-xs leading-5 text-blue-800">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 10v6M12 7h.01" /></svg>
-                    <p><span class="font-semibold">Secure access —</span> sign in with an active account created by an administrator.</p>
+                    <p><span class="font-semibold">Secure access —</span> sign in with an approved account.</p>
                 </div>
 
                 {#if errors.email && !processing}
@@ -125,7 +125,7 @@
                     </label>
 
                     <div class="flex justify-end">
-                        <div class="flex gap-3"><a href="/register" class="text-xs font-medium text-blue-700 hover:text-blue-900">Request access</a><a href="/forgot-password" class="text-xs font-medium text-blue-700 hover:text-blue-900">Forgot password?</a></div>
+                        <div class="flex gap-3"><Link href="/register" class="text-xs font-medium text-blue-700 hover:text-blue-900">Request access</Link><Link href="/forgot-password" class="text-xs font-medium text-blue-700 hover:text-blue-900">Forgot password?</Link></div>
                     </div>
 
                     <Button type="submit" disabled={processing} className="h-9 w-full gap-2">
@@ -133,7 +133,7 @@
                     </Button>
                 </form>
 
-                <p class="mt-8 text-center text-[11px] leading-5 text-slate-400">Accounts are created and assigned a role by an administrator. Role selection is intentionally not available on this form.</p>
+                <p class="mt-8 text-center text-[11px] leading-5 text-slate-400">Need an account? Request access and an administrator will review it. If you forgot your password, use "Forgot password".</p>
             </div>
         </section>
     </div>

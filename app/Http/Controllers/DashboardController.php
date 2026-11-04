@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Role;
+use App\Models\Dataset;
+use App\Models\MlModel;
+use App\Models\PredictionLog;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +22,9 @@ class DashboardController extends Controller
     {
         $range = $request->integer('range', 30);
         $range = in_array($range, [30, 365], true) ? $range : 30;
+        $role = $request->user()->role;
+        $latestSale = Sale::query()->where('status', 'completed')->max('transaction_date');
+        $anchor = $latestSale ? Carbon::parse($latestSale) : now();
         $completedSales = Sale::query()->where('status', 'completed');
         $totalProducts = Product::count();
         $lowStock = Product::whereColumn('stock_quantity', '<=', 'reorder_threshold')
@@ -24,8 +32,8 @@ class DashboardController extends Controller
             ->count();
         $outOfStock = Product::where('stock_quantity', 0)->count();
         $healthyStock = max($totalProducts - $lowStock - $outOfStock, 0);
-        $periodStart = now()->subDays($range - 1)->startOfDay();
-        $slowMovingSince = now()->subDays(90)->startOfDay();
+        $periodStart = $anchor->copy()->subDays($range - 1)->startOfDay();
+        $slowMovingSince = $anchor->copy()->subDays(90)->startOfDay();
 
         $trend = (clone $completedSales)
             ->where('transaction_date', '>=', $periodStart)
@@ -76,13 +84,55 @@ class DashboardController extends Controller
                 'sku' => $product->sku,
                 'stock' => (int) $product->stock_quantity,
                 'days_without_sale' => $product->last_sale_at
-                    ? Carbon::parse($product->last_sale_at)->diffInDays(now())
+                    ? (int) Carbon::parse($product->last_sale_at)->startOfDay()->diffInDays($anchor->copy()->startOfDay())
                     : null,
             ])
             ->values();
 
+        $sections = [
+            'sales' => in_array($role, [Role::Admin->value, Role::Instructor->value, Role::SalesPersonnel->value], true),
+            'inventory' => in_array($role, [Role::Admin->value, Role::Instructor->value, Role::InventoryClerk->value], true),
+            'rankings' => in_array($role, [Role::Admin->value, Role::Instructor->value], true),
+            'analysis' => $role === Role::Instructor->value,
+        ];
+        $periodSales = (float) (clone $completedSales)->where('transaction_date', '>=', $periodStart)->sum('total_amount');
+        $periodTransactions = (clone $completedSales)->where('transaction_date', '>=', $periodStart)->count();
+
         return Inertia::render('Dashboard', [
             'dashboard' => [
+                'sections' => $sections,
+                'data_as_of' => $anchor->toDateString(),
+                'period_sales' => $periodSales,
+                'period_transactions' => $periodTransactions,
+                'average_sale' => $periodTransactions > 0 ? round($periodSales / $periodTransactions, 2) : 0,
+                'recent_sales' => $role === Role::SalesPersonnel->value
+                    ? Sale::query()->where('status', 'completed')->latest('transaction_date')->latest('id')->limit(6)
+                        ->get(['id', 'transaction_number', 'total_amount', 'payment_method', 'transaction_date'])
+                        ->map(fn (Sale $sale) => [
+                            'id' => $sale->id, 'transaction_number' => $sale->transaction_number, 'total' => (float) $sale->total_amount,
+                            'payment_method' => $sale->payment_method, 'date' => $sale->transaction_date->toIso8601String(),
+                        ])->values() : [],
+                'recent_movements' => $role === Role::InventoryClerk->value
+                    ? StockMovement::with(['product:id,name', 'user:id,name'])->latest('id')->limit(6)->get()
+                        ->map(fn (StockMovement $movement) => [
+                            'id' => $movement->id, 'product' => $movement->product?->name, 'type' => $movement->movement_type,
+                            'quantity' => $movement->quantity, 'user' => $movement->user?->name, 'note' => $movement->note,
+                            'at' => $movement->created_at?->diffForHumans(),
+                        ])->values() : [],
+                'low_stock_list' => $role === Role::InventoryClerk->value
+                    ? Product::query()->whereColumn('stock_quantity', '<=', 'reorder_threshold')->orderBy('stock_quantity')->limit(5)
+                        ->get(['id', 'name', 'sku', 'stock_quantity', 'reorder_threshold'])->values() : [],
+                'model_evaluations' => $sections['analysis']
+                    ? MlModel::query()->active()->get()->map(fn (MlModel $m) => [
+                        'id' => $m->id, 'name' => $m->algorithmLabel(), 'task' => $m->task, 'version' => $m->version,
+                        'mae' => $m->mae, 'rmse' => $m->rmse, 'mape' => $m->mape, 'r2' => $m->r2,
+                    ])->values() : [],
+                'analysis' => $sections['analysis'] ? [
+                    'datasets' => Dataset::count(),
+                    'records' => (int) Dataset::sum('records'),
+                    'models' => MlModel::count(),
+                    'predictions' => PredictionLog::count(),
+                ] : null,
                 'range' => $range,
                 'total_sales' => (float) (clone $completedSales)->sum('total_amount'),
                 'transactions' => (clone $completedSales)->count(),

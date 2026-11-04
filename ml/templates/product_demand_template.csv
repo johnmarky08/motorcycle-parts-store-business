@@ -1,1 +1,3 @@
-date,product_id,product_name,category,units_sold,stock_quantity,unit_price,product_index,promotion,day_of_week,recent_demand,day_index
+week_start,product_id,sku,product_name,category,units_sold,revenue,transactions,avg_unit_price
+2026-01-05,1,BP-KN-004,Kawasaki Ninja Brake Pad,Brake System,6,7500.00,5,1250.00
+2026-01-05,2,BP-HC-005,Honda Click 125 Front Brake Pad,Brake System,9,3420.00,8,380.00

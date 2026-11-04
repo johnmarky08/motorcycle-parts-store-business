@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Support\Like;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,7 @@ class InventoryController extends Controller
         $sort = $request->string('sort')->toString();
         $products = Product::query()->with('category')
             ->when($request->string('search')->isNotEmpty(), fn ($query) => $query->where(function ($query) use ($request) {
-                $search = $request->string('search')->toString();
+                $search = Like::escape($request->string('search')->toString());
                 $query->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%");
             }))
             ->when($request->integer('category_id'), fn ($query) => $query->where('category_id', $request->integer('category_id')))
@@ -144,7 +145,7 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'movement_type' => ['required', Rule::in(['received', 'reduction', 'correction'])],
-            'quantity' => ['required', 'integer', 'min:1'],
+            'quantity' => ['required', 'integer', 'min:1', 'max:100000'],
             'note' => ['required', 'string', 'max:255'],
         ]);
 
@@ -174,11 +175,11 @@ class InventoryController extends Controller
         return $request->validate([
             'category_id' => ['required', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:255'],
-            'sku' => ['required', 'string', 'max:100', Rule::unique('products', 'sku')->ignore($request->route('product'))],
-            'description' => ['nullable', 'string'],
-            'selling_price' => ['required', 'numeric', 'min:0'],
-            'stock_quantity' => ['required', 'integer', 'min:0'],
-            'reorder_threshold' => ['required', 'integer', 'min:0'],
+            'sku' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9][A-Za-z0-9\-_.]*$/', Rule::unique('products', 'sku')->ignore($request->route('product'))],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'selling_price' => ['required', 'numeric', 'min:0', 'max:9999999.99'],
+            'stock_quantity' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'reorder_threshold' => ['required', 'integer', 'min:0', 'max:100000'],
         ]);
     }
 }

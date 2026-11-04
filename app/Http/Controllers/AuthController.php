@@ -6,6 +6,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -42,12 +44,12 @@ class AuthController extends Controller
         RateLimiter::hit($key, 3600);
 
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'confirmed', 'min:8'],
-            'requested_role' => ['required', 'in:instructor,inventory_clerk,sales_personnel'],
+            'name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\p{L}\p{M}\s.'\-]+$/u"],
+            'email' => ['required', 'email', 'max:190', 'unique:users,email'],
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
+            'requested_role' => ['required', 'in:admin,instructor,inventory_clerk,sales_personnel'],
             'affiliation' => ['required', 'string', 'max:255'],
-        ]);
+        ], ['name.regex' => 'Name may only contain letters, spaces, apostrophes, periods and hyphens.']);
 
         $token = Str::random(64);
 
@@ -62,6 +64,7 @@ class AuthController extends Controller
             'registration_status_token' => hash('sha256', $token),
             'submitted_at' => now(),
         ]);
+        Log::channel('security')->info('auth.registration_submitted', ['user_id' => $user->id, 'requested_role' => $data['requested_role'], 'ip' => $request->ip()]);
 
         return redirect('/register?status_token=' . urlencode($token));
     }
@@ -105,6 +108,7 @@ class AuthController extends Controller
             'status' => 'active',
         ], $credentials['remember'] ?? false)) {
             RateLimiter::hit($key);
+            Log::channel('security')->warning('auth.login_failed', ['email' => Str::lower($credentials['email']), 'ip' => $request->ip()]);
             $account = \App\Models\User::where('email', Str::lower($credentials['email']))->first();
             $message = 'These credentials do not match an active account.';
 
@@ -125,12 +129,14 @@ class AuthController extends Controller
         RateLimiter::clear($key);
         $request->session()->regenerate();
         $request->user()->forceFill(['last_login_at' => now()])->save();
+        Log::channel('security')->info('auth.login', ['user_id' => $request->user()->id, 'ip' => $request->ip()]);
 
         return redirect()->intended('/dashboard');
     }
 
     public function logout(Request $request): RedirectResponse
     {
+        Log::channel('security')->info('auth.logout', ['user_id' => $request->user()?->id]);
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -145,10 +151,17 @@ class AuthController extends Controller
 
     public function sendResetLink(Request $request): RedirectResponse
     {
-        $credentials = $request->validate(['email' => ['required', 'email']]);
-        $status = Password::sendResetLink($credentials);
+        $credentials = $request->validate(['email' => ['required', 'email', 'max:190']]);
 
-        return back()->with($status === Password::RESET_LINK_SENT ? 'status' : 'error', __($status));
+        try {
+            Password::sendResetLink($credentials);
+        } catch (\Throwable $exception) {
+            // Mail problems are logged for the administrator; the visitor always sees the same neutral message.
+            Log::error('Password reset email could not be sent', ['error' => $exception->getMessage()]);
+        }
+
+        // Same answer whether or not the account exists (prevents account enumeration).
+        return back()->with('status', 'If an account exists for that email address, a password reset link has been sent. The message can take a few minutes and may arrive in your spam or junk folder.');
     }
 
     public function showResetPassword(Request $request, string $token): Response
@@ -164,7 +177,7 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'token' => ['required'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'confirmed', 'min:8'],
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
         ]);
 
         $status = Password::reset($credentials, function ($user, $password) {

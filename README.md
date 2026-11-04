@@ -1,293 +1,183 @@
 # One Prompt Away — Motorcycle Parts Store Management System
 
-## 1. Project overview
+Business application with knowledge analysis and prediction for a motorcycle-parts store.
+Laravel 12 · Inertia 3 · Svelte 5 · Tailwind · MySQL/MariaDB · Python (scikit-learn).
 
-One Prompt Away is a Laravel and Inertia-based management system for a motorcycle-parts store. It brings authentication, role-aware workspaces, inventory operations, sales processing, business metrics, and machine-learning experiments into one application.
+## 1. Features
 
-The system is designed to help store staff maintain an accurate catalog, track stock movements, record completed sales, identify best-selling and slow-moving products, and evaluate demand and sales prediction models.
+| Area | What it does |
+| --- | --- |
+| Accounts | Sign up with a requested role, administrator approval, sign in, password reset by email, role-based access |
+| Inventory | Products, categories, audited stock movements (received / reduction / sale / correction), low and out-of-stock tracking |
+| Sales | Multi-item transactions, history with filters, stock deducted atomically, duplicate-submit protection |
+| User management | Approve or reject registrations (any of the four roles), edit, suspend, delete users |
+| Knowledge analysis | Dataset preview and upload, Simple Linear Regression and Random Forest Regression, train / save / load models, evaluation metrics with descriptions |
+| Prediction | Product demand, sales, slow-moving products, best-selling products |
+| Dashboard | Role-specific cards and charts |
 
-## 2. Key features
+### Roles and access
 
-- Session-based authentication, registration requests, password recovery, and logout.
-- Role-based access control with administrator approval for registration requests.
-- User management, role assignment, account status changes, approval, rejection, and deletion.
-- Inventory catalog management for products and categories.
-- Stock receiving, reduction, correction, and movement history.
-- Sales transaction creation with server-calculated totals, stock checks, payment methods, and idempotency protection.
-- Dashboard metrics for sales, transactions, products, low stock, inventory health, best sellers, and slow-moving products.
-- Knowledge Analysis workspace for validated datasets, saved model metrics, and product insights.
-- Product demand and sales-history prediction workflows.
-- Simple Linear Regression and Random Forest Regression training.
-- Persisted model metadata and private model artifacts.
-- Synthetic dataset generation and validation tooling for development and testing.
+| Role | Can open |
+| --- | --- |
+| Inventory clerk | Dashboard, Inventory Management |
+| Sales personnel | Dashboard, Sales Management |
+| Admin | Dashboard (full), User Management, Prediction (inputs and outputs only — no metrics) |
+| Instructor | Dashboard (full), Prediction, Knowledge Analysis (datasets, training, evaluation metrics and descriptions) |
 
-The ML datasets currently included in the repository are synthetic development data. They are not production store transactions.
+Access is enforced on the server by route middleware (`role:`), not only by hiding menu items.
 
-## 3. User roles and permissions
+### Registration flow
 
-The backend middleware is authoritative. The frontend navigation reflects the same role matrix.
+1. A visitor requests access on **Sign up** (name, email, password, requested role, affiliation). All four roles can be requested.
+2. The account is **pending** and cannot sign in. The applicant gets a private status link.
+3. An admin approves it in **User Management** (and may grant a different role than requested) or rejects it.
 
-| Role | Permissions |
-|---|---|
-| Admin | Dashboard, user management, inventory, sales, prediction, and knowledge analysis |
-| Instructor | Dashboard and knowledge analysis |
-| Inventory Clerk | Dashboard and inventory management |
-| Sales Personnel | Dashboard and sales management |
+## 2. Setup
 
-Authentication is required for application workspaces. Administrative, inventory, sales, and analysis endpoints are protected by role middleware.
-
-## 4. Technology stack
-
-- PHP 8.2 or newer
-- Laravel 12
-- Inertia.js Laravel adapter 3.5+
-- Svelte 5.57.3
-- Inertia Svelte 3.9.1
-- Vite 6
-- Tailwind CSS 4
-- shadcn-svelte 1.7.2
-- Bits UI 2.20.2
-- LayerChart 2.1.0
-- D3 Scale 4 and D3 Shape 3
-- Lucide Svelte
-- SQLite for the default local/test configuration, with MySQL or MariaDB supported through Laravel configuration
-- Python 3.12 recommended for the current ML dependency set
-- joblib 1.4.2
-- NumPy 2.1.3
-- pandas 2.2.3
-- scikit-learn 1.5.2
-
-Exact JavaScript versions and transitive dependencies are recorded in `package-lock.json`. Exact Python versions are pinned in `ml/requirements.txt`.
-
-## 5. System requirements
-
-Install the following before setup:
-
-- PHP 8.2+
-- Composer
-- Node.js and npm compatible with the Vite 6 toolchain
-- Python 3.12 recommended
-- SQLite, or a configured MySQL/MariaDB database
-
-For Windows, ensure `php`, `composer`, `node`, `npm`, and `python` are available in the terminal used to run the project.
-
-## 6. Installation and setup
-
-Clone the repository and enter the project directory:
-
-```bash
-git clone <repository-url>
-cd motorcycle-parts-store-business
-```
-
-Install PHP and JavaScript dependencies:
+Requirements: PHP 8.2+, Composer, Node 20+, MySQL 8 or MariaDB 10.6+, Python 3.10+.
 
 ```bash
 composer install
 npm install
-```
-
-Create the environment file and generate the application key:
-
-```bash
-copy .env.example .env
+cp .env.example .env            # Windows PowerShell: Copy-Item .env.example .env
 php artisan key:generate
-```
 
-On macOS or Linux, use:
+# create the empty database (name from DB_DATABASE in .env), for example:
+#   CREATE DATABASE motorcycle_parts_store_management_system CHARACTER SET utf8mb4;
 
-```bash
-cp .env.example .env
-php artisan key:generate
-```
-
-The default `.env.example` uses SQLite. Create the database file before running migrations:
-
-```bash
-php -r "file_exists('database/database.sqlite') || touch('database/database.sqlite');"
-```
-
-Configure the database values in `.env`, then run migrations:
-
-```bash
-php artisan migrate
-```
-
-Install the ML dependencies:
-
-```bash
-python -m venv .venv
-```
-
-Activate the environment and install the pinned packages:
-
-```bash
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-python -m pip install -r ml/requirements.txt
-```
-
-```bash
-# macOS or Linux
-source .venv/bin/activate
-python -m pip install -r ml/requirements.txt
-```
-
-Start the application in separate terminals:
-
-```bash
+pip install -r ml/requirements.txt         # a virtualenv named .venv in the project folder is picked up automatically
+php artisan migrate:fresh --seed           # tables, accounts, 63 products, 14,385 sales, datasets, 4 trained models
+npm run build                              # or: npm run dev
 php artisan serve
 ```
 
-```bash
-npm run dev
+Open http://localhost:8000 — `/` goes to the sign-in page.
+
+`migrate --seed` also trains the four starter models. If Python is not ready it only prints a warning; install the packages and run
+`php artisan ml:train` (add `--tune` for hyper-parameter tuning). Set `ML_PYTHON` in `.env` when the right Python is not found
+(Windows example: `ML_PYTHON=C:/Python312/python.exe`).
+
+### Default accounts (set in `.env` before seeding; defaults come from `config/store.php`)
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | admin@oneprompt.test | Admin@12345 |
+| Instructor | instructor@oneprompt.test | Instructor@12345 |
+| Inventory clerk | inventory@oneprompt.test | Inventory@12345 |
+| Sales personnel | sales@oneprompt.test | Sales@12345 |
+
+The seeder also creates a few more staff accounts and two pending registrations so the approval screen has data.
+**Change these passwords before any real deployment.**
+
+### Password reset email (real sending)
+
+Reset links are sent with Laravel's mailer. The free option is a Gmail account with an App password:
+
+1. Google Account → Security → turn on 2-Step Verification → **App passwords** → create one.
+2. In `.env` set `MAIL_USERNAME` (the Gmail address), `MAIL_PASSWORD` (the 16-character app password) and `MAIL_FROM_ADDRESS` (same Gmail address).
+   The other `MAIL_*` lines are already set for `smtp.gmail.com:587`.
+3. Check it: `php artisan mail:test you@example.com`.
+
+Other options: `MAIL_MAILER=phpmail` uses PHP's built-in `mail()` function (needs a working sendmail on the server or `sendmail_path` in `php.ini`
+on XAMPP); `MAIL_MAILER=log` only writes the message to `storage/logs`.
+
+> **The reset email may arrive in the spam or junk folder** (mail from a free address and a local server is often filtered). The
+> Forgot-password page says so, and users should check there if the message does not appear after a few minutes.
+> The reset link opens at `APP_URL`, so set `APP_URL` to the address people really use.
+
+## 3. Datasets and machine learning
+
+| File (`ml/datasets/`) | Rows | One row is… |
+| --- | --- | --- |
+| `sales_history.csv` | 22,419 | a sold item on a transaction (14,385 transactions, Jan 2025 – Nov 2026) |
+| `product_demand.csv` | 5,985 | units sold for one product in one week (63 products × 95 weeks) |
+
+The data is **synthetic** (realistic parts catalog and prices, weekday/payday/seasonal patterns, growth, random noise), generated
+deterministically by `python ml/generate_datasets.py`. The database is seeded from the same CSV, so dashboard, transactions and datasets agree.
+Do not present it as real business data. Instructors can upload their own CSV (see `ml/README.md`); uploads are validated before saving
+(columns, dates, numbers, at least 1,000 records, duplicates, missing values).
+
+```
+Laravel (MlService) --proc_open, JSON on stdin--> python ml/cli.py train | predict --JSON on stdout--> Laravel
+                              reads only CSV files and saved models (no database access from Python)
 ```
 
-The Laravel `composer run dev` script can also start the Laravel server, queue listener, and Vite development server together.
+* **Train once, load many times.** Training evaluates on a chronological hold-out (rolling 4-week-ahead forecasts), refits on all data, saves a
+  `.joblib` model and records metrics, parameters and a SHA-256 hash in MySQL. Predictions only **load** the saved model.
+* **Simple Linear Regression:** a linear trend on the time index (per product for demand), optional month seasonal index.
+* **Random Forest Regression:** lag, rolling-mean and calendar features, recursive multi-step forecasting, optional tuning
+  (`RandomizedSearchCV` + `TimeSeriesSplit`). For sales the forest models the ratio to a linear trend (a forest cannot extrapolate growth).
+* **Slow-moving / best-selling:** derived from the demand model — predicted 30-day velocity against current stock (days of cover, percentile rank),
+  and ranked predicted units and revenue for 30/60/90 days.
+* **No console window:** Python is started with `proc_open` without a new console; on Windows `pythonw.exe` is used when present.
+* **Metrics:** MAE, RMSE, MAPE (non-zero actuals only), WAPE and R², each described on the Knowledge Analysis page.
 
-For a production frontend build:
+Results with the shipped data (80/20 split, no tuning):
 
-```bash
-npm run build
-```
+| Task | Model | MAE | RMSE | MAPE | WAPE | R² |
+| --- | --- | --- | --- | --- | --- | --- |
+| Weekly sales (₱) | Simple Linear Regression | 14,157 | 17,715 | 6.8% | 6.8% | −0.02 |
+| Weekly sales (₱) | Random Forest Regression | 13,852 | 18,077 | 6.5% | 6.7% | −0.07 |
+| Weekly demand (units/product) | Simple Linear Regression | 1.96 | 2.71 | 57% | 41% | 0.50 |
+| Weekly demand (units/product) | Random Forest Regression | 1.98 | 2.69 | 61% | 41% | 0.51 |
 
-## 7. Environment configuration
+Read these honestly: weekly sales are predicted within about 6–7%, but the hold-out weeks vary only by random noise around the trend, so R²
+is near zero. Product demand is small counts (about 4 units a week), so percentage errors are large by nature; WAPE and R² describe it better
+than MAPE. Because the data is synthetic, the two algorithms perform alike; real data with richer patterns is where the forest should win.
 
-Use `.env.example` as the source of available configuration. At minimum, configure:
-
-- `APP_NAME`
-- `APP_ENV`
-- `APP_KEY`
-- `APP_URL`
-- `DB_CONNECTION`
-- Database host, port, database name, username, and password when using MySQL or MariaDB
-- Session, cache, queue, mail, and filesystem settings as appropriate for the environment
-
-The optional `ML_PYTHON` environment variable selects the Python executable used by the Laravel analysis controller. Set it to the interpreter that has the packages from `ml/requirements.txt` installed when the default `python` command is not sufficient.
-
-Never commit `.env` or credentials. Keep secrets in the local environment or deployment secret store.
-
-## 8. Machine learning setup
-
-### Datasets
-
-The included synthetic datasets are:
-
-- `ml/datasets/product_demand.csv`
-- `ml/datasets/sales_history.csv`
-
-Each current development dataset contains 1,200 records and is validated before training. CSV templates for future real-data exports are in `ml/templates/`. Real business data has not been collected or included by this repository.
-
-### Generate datasets
-
-To regenerate the deterministic synthetic datasets:
-
-```bash
-python ml/generate_datasets.py
-```
-
-### Validate datasets
-
-Validate both datasets without modifying them:
-
-```bash
-python ml/validate_datasets.py
-```
-
-The validator checks required columns, record count, missing values, duplicates, numeric values, dates, identifier format, valid ranges, and common target-leakage conditions.
-
-### Train and predict
-
-The Python pipeline supports:
-
-- `product_demand` with target `units_sold`
-- `sales_history` with target `total_amount`
-- `simple_linear_regression`
-- `random_forest_regression`
-
-Example training command:
-
-```bash
-python ml/pipeline.py train --dataset product_demand --algorithm simple_linear_regression --artifact storage/app/private/ml/product-demand.joblib
-```
-
-The pipeline reports MAE, MSE, RMSE, R², training metrics, feature ranges, and model metadata. Models are persisted as private joblib artifacts and their metadata is stored by Laravel.
-
-Example prediction command:
-
-```bash
-python ml/pipeline.py predict --dataset product_demand --artifact storage/app/private/ml/product-demand.joblib --features "{\"day_index\":600,\"stock_quantity\":30,\"unit_price\":1250,\"product_index\":0,\"promotion\":0,\"day_of_week\":2,\"recent_demand\":10}"
-```
-
-The application requests training and prediction through authenticated Laravel analysis endpoints. Feature names, numeric values, valid ranges, and model artifacts are checked before a prediction is returned.
-
-The current regression models are trained from the synthetic CSV datasets. Product-demand requests can use current database product and inventory values as inputs, but the product-index encoding has not yet been verified as historically consistent with training. The resulting value must not be treated as a validated real-product demand forecast. Training on actual business data and stable product identity mapping remain future improvements. Sales forecasting from business records is also limited because the current database does not provide all model features, including promotion, discount, and customer-factor information.
-
-## 9. Testing
-
-Run the Laravel feature and unit tests:
+## 4. Testing
 
 ```bash
-php artisan test
+php artisan test                                  # 63 tests (SQLite in memory): auth, roles, inventory, sales, dashboard, security, prediction
+python -m unittest discover -s ml/tests -v        # 8 tests: training, saved-model prediction, integrity and path safety
+npm run build                                     # production frontend build
 ```
 
-Run the Python test suite using the repository's unittest-based tests:
+Browser interaction was exercised with scripted HTTP requests against a running server (login per role, role access, all four predictions,
+training); it is not part of the automated suites.
 
-```bash
-python -m unittest discover -s ml/tests
+## 5. Security (OWASP Top 10:2021)
+
+| Risk | Controls |
+| --- | --- |
+| A01 Broken access control | `role:` middleware on every route group (deny by default) and `active` check on every request, suspended users signed out, admins cannot demote/suspend themselves or remove the last admin, prices/totals computed on the server, refusals logged |
+| A02 Cryptographic failures | bcrypt hashing, encrypted sessions, `HttpOnly`/`SameSite=Lax` cookies, `SESSION_SECURE_COOKIE` + HSTS on HTTPS, `APP_DEBUG=false` by default |
+| A03 Injection | Eloquent/query-builder bindings, `LIKE` wildcards escaped, FormRequest/validator rules on every input, Python started with an argument array (no shell), Svelte escapes output |
+| A04 Insecure design | Approval-based registration, sales and stock changes in DB transactions with row locks, idempotency keys against double submit, upload limits |
+| A05 Misconfiguration | Content-Security-Policy, X-Frame-Options, nosniff, Referrer/Permissions-Policy, `no-store` on signed-in pages, friendly error pages, uploads outside `public/` |
+| A06 Vulnerable components | Locked dependencies — run `composer audit`, `npm audit` and `pip list --outdated` before release |
+| A07 Authentication failures | Login throttling per email+IP, generic failure message, session regeneration, POST-only logout with CSRF, strong-password rule everywhere, throttled password reset that never reveals whether an email exists |
+| A08 Integrity failures | Saved models load only if their SHA-256 matches the database; Python reads only inside `storage/app/ml`; uploads are parsed and validated, never executed |
+| A09 Logging & monitoring | `storage/logs/security-*.log`: sign-ins and failures, denials, registrations, approvals, user changes, sales, uploads, model training |
+| A10 SSRF | The application never fetches user-supplied URLs |
+
+Not covered by code: HTTPS termination, database privileges, backups, patching and web-server rate limiting. This is a hardened baseline,
+not a certification.
+
+## 6. Project structure
+
+```
+app/Http/Controllers   Auth, Dashboard, UserManagement, Inventory, Sales, Prediction, KnowledgeAnalysis
+app/Http/Middleware    EnsureUserRole, EnsureUserIsActive, SecurityHeaders, HandleInertiaRequests
+app/Services/Ml        MlService (Laravel ↔ Python bridge, proc_open)
+app/Services/Datasets  CSV validation, previews, registry
+app/Mail               PhpMailTransport (MAIL_MAILER=phpmail)
+ml/                    cli.py, sales_model.py, demand_model.py, common.py, datasets/, templates/, tests/
+database/              migrations, factories, seeders (+ seeders/data/products.csv)
+resources/js/Pages     Login, Register, ForgotPassword, ResetPassword, Dashboard, Inventory, Sales, UserManagement, Prediction, KnowledgeAnalysis, Error
+resources/js/lib       shadcn-style UI components
+docs/                  Requirement-by-requirement compliance matrix
 ```
 
-Validate the frontend production build:
+## 7. Current limitations
 
-```bash
-npm run build
-```
+- The ML data is synthetic; see section 3 for what the metrics do and do not show.
+- Email delivery needs your own SMTP credentials (see section 2); delivery to the inbox (instead of spam) cannot be guaranteed from a free address.
+- Windows behaviour of the Python launcher (no console window) was designed from the PHP/Windows process rules and the previous Tempus project;
+  it was verified on Linux only. If a console window still appears on your machine, tell us whether you use XAMPP/Apache or `php artisan serve` so the launcher can be adjusted.
+- Models are trained on the CSV datasets, not on live transactions; to include new sales, export them to the CSV layout and upload/retrain.
+- Not production-ready by test results alone: deployment, HTTPS, secrets management, monitoring and real-data governance still need review.
 
-Check whitespace errors before committing:
+## 8. Contributors
 
-```bash
-git diff --check
-```
-
-## 10. Project structure
-
-```text
-app/
-  Http/Controllers/       Laravel request and business workflows
-  Http/Middleware/         Authentication and role enforcement
-  Models/                  Eloquent models
-database/
-  migrations/              Application schema
-  seeders/                 Development seed data
-ml/
-  datasets/                Synthetic development CSVs
-  templates/               Real-data export templates
-  pipeline.py              Training and prediction pipeline
-  validate_datasets.py     Dataset readiness validator
-  tests/                   Python ML tests
-resources/
-  css/                     Tailwind CSS entry point
-  js/Components/           Shared application components
-  js/Pages/                Inertia Svelte page components
-  js/lib/components/ui/    Supplied shadcn-svelte-compatible primitives
-routes/
-  web.php                  Web, Inertia, authentication, and API-like routes
-tests/
-  Feature/                 Laravel feature coverage
-```
-
-## 11. Current limitations
-
-- The included ML data is synthetic development data and must not be presented as operational business data.
-- Browser interaction testing requires a running local application and is not part of the automated Laravel or Python suites.
-- The frontend production build emits a non-blocking warning for a generated JavaScript chunk larger than 500 KB because of the charting and UI component dependencies.
-- Password reset email delivery uses the configured Laravel mail driver; the default local configuration logs mail rather than delivering it.
-- The analysis endpoints require a Python executable with the pinned ML dependencies available to the Laravel process. Configure `ML_PYTHON` when the default `python` command resolves to a different environment.
-
-This project should not be considered production-ready solely because the automated tests pass. Deployment, infrastructure, mail delivery, secrets management, observability, and real-data governance require separate operational work.
-
-## 12. Contributors
-
-- [Contributor Name]
-
-Replace the placeholder with the confirmed human project contributors before publishing.
+Project team of the course assignment (instructor-assigned business application with knowledge analysis).

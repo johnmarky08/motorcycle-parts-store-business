@@ -1,5 +1,5 @@
 <script>
-    import { router } from "@inertiajs/svelte";
+    import { Link, router } from "@inertiajs/svelte";
     import Button from "../lib/components/ui/Button.svelte";
     import Checkbox from "../lib/components/ui/Checkbox.svelte";
     import Input from "../lib/components/ui/Input.svelte";
@@ -12,6 +12,7 @@
     let showPassword = false;
 
     const roles = [
+        { value: "admin", label: "Admin" },
         { value: "instructor", label: "Instructor" },
         { value: "inventory_clerk", label: "Inventory Clerk" },
         { value: "sales_personnel", label: "Sales Personnel" },
@@ -41,7 +42,7 @@
                 <h1 class="font-semibold">Registration status: {registration.status}</h1>
                 <p class="mt-2 text-xs leading-5">Your request for {roleLabel(registration.requested_role)} is being reviewed by an administrator. You cannot sign in until approval is complete.</p>
             </div>
-            <a href="/login" class="mt-6 block text-center text-xs font-semibold text-blue-700 hover:text-blue-900">Return to sign in</a>
+            <Link href="/login" class="mt-6 block text-center text-xs font-semibold text-blue-700 hover:text-blue-900">Return to sign in</Link>
         {:else}
             <p class="mb-2 text-xs font-medium text-slate-500">Request account access</p>
             <h1 class="text-2xl font-semibold tracking-tight text-slate-950">Create a registration request</h1>
@@ -63,7 +64,7 @@
                 <div><label for="register-affiliation" class="mb-1.5 block text-xs font-medium text-slate-700">Employee/student identifier or affiliation *</label><Input id="register-affiliation" bind:value={form.affiliation} required className="h-11" placeholder="e.g. Employee ID or department" />{#if errors.affiliation}<p class="mt-1 text-[11px] text-rose-600">{errors.affiliation}</p>{/if}</div>
                 <Button type="submit" disabled={processing} className="h-9 w-full">{processing ? "Submitting request…" : "Submit registration request"}</Button>
             </form>
-            <p class="mt-6 text-center text-xs text-slate-500">Already have access? <a href="/login" class="font-semibold text-blue-700 hover:text-blue-900">Sign in</a></p>
+            <p class="mt-6 text-center text-xs text-slate-500">Already have access? <Link href="/login" class="font-semibold text-blue-700 hover:text-blue-900">Sign in</Link></p>
         {/if}
     </section>
 </main>

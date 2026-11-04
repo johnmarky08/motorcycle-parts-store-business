@@ -15,12 +15,12 @@ class AuthenticationTest extends TestCase
         $user = User::factory()->create([
             'role' => 'admin',
             'status' => 'active',
-            'password' => 'secret-password',
+            'password' => 'Secret@Pass123',
         ]);
 
         $response = $this->post('/login', [
             'email' => $user->email,
-            'password' => 'secret-password',
+            'password' => 'Secret@Pass123',
         ]);
 
         $response->assertRedirect('/dashboard');
@@ -31,12 +31,12 @@ class AuthenticationTest extends TestCase
     {
         $user = User::factory()->create([
             'status' => 'suspended',
-            'password' => 'secret-password',
+            'password' => 'Secret@Pass123',
         ]);
 
         $this->post('/login', [
             'email' => $user->email,
-            'password' => 'secret-password',
+            'password' => 'Secret@Pass123',
         ])->assertSessionHasErrors('email');
 
         $this->assertGuest();
@@ -73,8 +73,8 @@ class AuthenticationTest extends TestCase
     public function test_role_matrix_is_enforced_for_all_authenticated_roles(): void
     {
         $routes = [
-            'admin' => ['/dashboard', '/user-management', '/prediction', '/inventory', '/sales', '/knowledge-analysis'],
-            'instructor' => ['/dashboard', '/knowledge-analysis'],
+            'admin' => ['/dashboard', '/user-management', '/prediction'],
+            'instructor' => ['/dashboard', '/prediction', '/knowledge-analysis'],
             'inventory_clerk' => ['/dashboard', '/inventory'],
             'sales_personnel' => ['/dashboard', '/sales'],
         ];
@@ -109,8 +109,8 @@ class AuthenticationTest extends TestCase
         $response = $this->post('/register', [
             'name' => 'Applicant User',
             'email' => 'applicant@example.com',
-            'password' => 'secret-password',
-            'password_confirmation' => 'secret-password',
+            'password' => 'Secret@Pass123',
+            'password_confirmation' => 'Secret@Pass123',
             'requested_role' => 'inventory_clerk',
             'affiliation' => 'Employee ID 1001',
         ]);
@@ -132,9 +132,9 @@ class AuthenticationTest extends TestCase
         $this->from('/register')->post('/register', [
             'name' => 'Applicant User',
             'email' => $user->email,
-            'password' => 'secret-password',
-            'password_confirmation' => 'secret-password',
-            'requested_role' => 'admin',
+            'password' => 'Secret@Pass123',
+            'password_confirmation' => 'Secret@Pass123',
+            'requested_role' => 'superuser',
             'affiliation' => 'Employee ID 1001',
         ])->assertRedirect('/register')
             ->assertSessionHasErrors(['email', 'requested_role']);
@@ -145,12 +145,12 @@ class AuthenticationTest extends TestCase
         foreach (['pending', 'rejected', 'suspended'] as $status) {
             $user = User::factory()->create([
                 'status' => $status,
-                'password' => 'secret-password',
+                'password' => 'Secret@Pass123',
             ]);
 
             $this->post('/login', [
                 'email' => $user->email,
-                'password' => 'secret-password',
+                'password' => 'Secret@Pass123',
             ])->assertSessionHasErrors('email');
 
             $this->assertGuest();
