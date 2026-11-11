@@ -51,10 +51,9 @@ class DashboardTest extends TestCase
         ]);
 
         $completed = Sale::create([
-            'user_id' => $admin->id,
+            'customer_id' => $admin->id,
             'transaction_number' => 'TX-TEST-1',
             'transaction_date' => now()->subDays(3),
-            'status' => 'completed',
             'payment_method' => 'Cash',
             'total_amount' => 250,
         ]);
@@ -63,22 +62,6 @@ class DashboardTest extends TestCase
             ['product_id' => $low->id, 'product_name' => $low->name, 'sku' => $low->sku, 'quantity' => 1, 'unit_price' => 50, 'line_total' => 50],
         ]);
 
-        $cancelled = Sale::create([
-            'user_id' => $admin->id,
-            'transaction_number' => 'TX-TEST-2',
-            'transaction_date' => now()->subDays(2),
-            'status' => 'voided',
-            'payment_method' => 'Cash',
-            'total_amount' => 999,
-        ]);
-        $cancelled->items()->create([
-            'product_id' => $low->id,
-            'product_name' => $low->name,
-            'sku' => $low->sku,
-            'quantity' => 99,
-            'unit_price' => 50,
-            'line_total' => 999,
-        ]);
 
         $this->actingAs($admin)->get('/dashboard')
             ->assertInertia(fn ($page) => $page

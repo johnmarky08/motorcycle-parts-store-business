@@ -40,12 +40,17 @@ class PredictionController extends Controller
         $workflow = $data['workflow'];
         $task = $workflow === 'sales' ? 'sales' : 'demand';
 
-        $model = MlModel::active()->where('task', $task)->where('algorithm', $data['model'])->latest('id')->first();
-        if (! $model) {
-            return response()->json([
-                'message' => 'No trained '.(MlModel::ALGORITHMS[$data['model']]).' model is available for this analysis. Ask an instructor to train one.',
-                'code' => 'no_model',
-            ], 409);
+        $algorithms = $data['model'] === 'both' ? array_keys(MlModel::ALGORITHMS) : [$data['model']];
+        $models = [];
+        foreach ($algorithms as $algorithm) {
+            $found = MlModel::active()->where('task', $task)->where('algorithm', $algorithm)->latest('id')->first();
+            if (! $found) {
+                return response()->json([
+                    'message' => 'No trained '.MlModel::ALGORITHMS[$algorithm].' model is available for this analysis. Ask an instructor to train one.',
+                    'code' => 'no_model',
+                ], 409);
+            }
+            $models[] = $found;
         }
 
         $params = [];
@@ -74,7 +79,7 @@ class PredictionController extends Controller
         }
 
         try {
-            $response = $ml->predict($model, $workflow, $params, $products);
+            $response = $ml->predict($models, $workflow, $params, $products);
         } catch (MlException $e) {
             $status = in_array($e->errorCode, ['insufficient_data', 'unknown_product'], true) ? 422 : 500;
 
@@ -83,20 +88,29 @@ class PredictionController extends Controller
 
         PredictionLog::create([
             'user_id' => $request->user()->id,
-            'ml_model_id' => $model->id,
+            'ml_model_id' => $models[0]->id,
             'workflow' => $workflow,
             'input' => $data,
             'result' => $this->logSummary($workflow, $response['result']),
         ]);
 
-        $modelInfo = [
+        $seeMetrics = $request->user()->hasRole(Role::Instructor);
+        $describe = fn (MlModel $model) => [
             'algorithm' => $model->algorithm,
             'algorithm_label' => $model->algorithmLabel(),
             'version' => $model->version,
             'trained_through' => $model->trained_through?->toDateString(),
-        ];
-        if ($request->user()->hasRole(Role::Instructor)) {
-            $modelInfo['metrics'] = ['mae' => $model->mae, 'rmse' => $model->rmse, 'mape' => $model->mape, 'wape' => $model->wape, 'r2' => $model->r2];
+        ] + ($seeMetrics ? ['metrics' => ['mae' => $model->mae, 'rmse' => $model->rmse, 'mape' => $model->mape, 'wape' => $model->wape, 'r2' => $model->r2]] : []);
+
+        $modelInfo = count($models) === 1
+            ? $describe($models[0])
+            : ['algorithm' => 'both', 'algorithm_label' => 'Both Models (Combined)', 'version' => null, 'trained_through' => $models[0]->trained_through?->toDateString(),
+               'components' => array_map($describe, $models)];
+
+        // For "both", every model's own result is returned next to the combined one.
+        $components = [];
+        foreach ($response['components'] ?? [] as $index => $component) {
+            $components[] = ['algorithm' => $component['algorithm'], 'algorithm_label' => MlModel::ALGORITHMS[$component['algorithm']] ?? $component['algorithm'], 'result' => $component['result']];
         }
 
         return response()->json([
@@ -104,6 +118,7 @@ class PredictionController extends Controller
             'generated_at' => now()->toIso8601String(),
             'model' => $modelInfo,
             'result' => $response['result'],
+            'components' => $components,
         ]);
     }
 

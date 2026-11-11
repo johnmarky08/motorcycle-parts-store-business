@@ -26,6 +26,11 @@ return [
             'email' => env('SEED_SALES_EMAIL', 'sales@oneprompt.test'),
             'password' => env('SEED_SALES_PASSWORD', 'Sales@12345'),
         ],
+        'user' => [
+            'name' => env('SEED_USER_NAME', 'Juan Dela Cruz'),
+            'email' => env('SEED_USER_EMAIL', 'customer@oneprompt.test'),
+            'password' => env('SEED_USER_PASSWORD', 'Customer@12345'),
+        ],
     ],
 
     'payment_methods' => ['Cash', 'GCash', 'Card', 'Bank Transfer'],

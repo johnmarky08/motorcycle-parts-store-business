@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img" aria-label="Waterproof Rain Cover">
+<defs><linearGradient id="bgWaterproofRa" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3e8ff"/><stop offset="1" stop-color="#e9d5ff"/></linearGradient></defs>
+<rect width="600" height="450" fill="url(#bgWaterproofRa)"/>
+<circle cx="300" cy="190" r="150" fill="#ffffff" opacity=".55"/>
+<ellipse cx="300" cy="332" rx="130" ry="14" fill="#0f172a" opacity=".12"/>
+<path d="M170 250c0-90 50-140 130-140s130 50 130 140z" fill="#8a25e2"/><circle cx="215" cy="262" r="26" fill="#0f172a"/><circle cx="385" cy="262" r="26" fill="#0f172a"/><circle cx="215" cy="262" r="10" fill="#f8fafc"/><circle cx="385" cy="262" r="10" fill="#f8fafc"/>
+<rect x="40" y="368" width="520" height="54" rx="14" fill="#ffffff" opacity=".92"/>
+<text x="300" y="393" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Waterproof Rain Cover</text>
+<text x="300" y="413" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#64748b">Accessories · RC-WP-062</text>
+</svg>

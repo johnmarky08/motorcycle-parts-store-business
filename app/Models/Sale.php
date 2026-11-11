@@ -13,7 +13,7 @@ class Sale extends Model
     /** @use HasFactory<SaleFactory> */
     use HasFactory;
 
-    protected $fillable = ['user_id', 'transaction_number', 'idempotency_key', 'transaction_date', 'status', 'payment_method', 'total_amount'];
+    protected $fillable = ['customer_id', 'customer_name', 'transaction_number', 'idempotency_key', 'transaction_date', 'payment_method', 'total_amount'];
 
     protected function casts(): array
     {
@@ -23,9 +23,9 @@ class Sale extends Model
         ];
     }
 
-    public function user(): BelongsTo
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'customer_id');
     }
 
     public function items(): HasMany

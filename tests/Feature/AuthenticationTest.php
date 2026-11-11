@@ -74,7 +74,7 @@ class AuthenticationTest extends TestCase
     {
         $routes = [
             'admin' => ['/dashboard', '/user-management', '/prediction'],
-            'instructor' => ['/dashboard', '/prediction', '/knowledge-analysis'],
+            'instructor' => ['/dashboard', '/user-management', '/prediction', '/knowledge-analysis'],
             'inventory_clerk' => ['/dashboard', '/inventory'],
             'sales_personnel' => ['/dashboard', '/sales'],
         ];
@@ -104,109 +104,53 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_registration_creates_a_pending_account_without_authenticating(): void
+    public function test_registration_creates_an_active_customer_and_signs_them_in(): void
     {
-        $response = $this->post('/register', [
-            'name' => 'Applicant User',
-            'email' => 'applicant@example.com',
-            'password' => 'Secret@Pass123',
-            'password_confirmation' => 'Secret@Pass123',
-            'requested_role' => 'inventory_clerk',
-            'affiliation' => 'Employee ID 1001',
-        ]);
+        $this->post('/register', [
+            'name' => 'Juan Dela Cruz',
+            'email' => 'Juan@Example.com',
+            'password' => 'Strong@12345',
+            'password_confirmation' => 'Strong@12345',
+        ])->assertRedirect('/shop');
 
-        $response->assertRedirect();
-        $this->assertGuest();
-        $this->assertDatabaseHas('users', [
-            'email' => 'applicant@example.com',
-            'status' => 'pending',
-            'requested_role' => 'inventory_clerk',
-            'affiliation' => 'Employee ID 1001',
-        ]);
+        $this->assertDatabaseHas('users', ['email' => 'juan@example.com', 'role' => 'user', 'status' => 'active']);
+        $this->assertAuthenticated();
     }
 
-    public function test_registration_rejects_duplicate_email_and_admin_request(): void
+    public function test_registration_ignores_a_role_sent_by_the_browser(): void
     {
-        $user = User::factory()->create(['email' => 'existing@example.com']);
+        $this->post('/register', [
+            'name' => 'Sneaky Person', 'email' => 'sneaky@example.com', 'password' => 'Strong@12345',
+            'password_confirmation' => 'Strong@12345', 'role' => 'instructor', 'status' => 'active',
+        ])->assertRedirect('/shop');
+
+        $this->assertDatabaseHas('users', ['email' => 'sneaky@example.com', 'role' => 'user']);
+    }
+
+    public function test_registration_rejects_weak_passwords_and_duplicate_emails(): void
+    {
+        $existing = User::factory()->create(['email' => 'existing@example.com']);
 
         $this->from('/register')->post('/register', [
-            'name' => 'Applicant User',
-            'email' => $user->email,
-            'password' => 'Secret@Pass123',
-            'password_confirmation' => 'Secret@Pass123',
-            'requested_role' => 'superuser',
-            'affiliation' => 'Employee ID 1001',
-        ])->assertRedirect('/register')
-            ->assertSessionHasErrors(['email', 'requested_role']);
+            'name' => 'Applicant User', 'email' => $existing->email, 'password' => 'password', 'password_confirmation' => 'password',
+        ])->assertRedirect('/register')->assertSessionHasErrors(['email', 'password']);
     }
 
-    public function test_non_active_accounts_cannot_sign_in(): void
+    public function test_suspended_accounts_cannot_sign_in(): void
     {
-        foreach (['pending', 'rejected', 'suspended'] as $status) {
-            $user = User::factory()->create([
-                'status' => $status,
-                'password' => 'Secret@Pass123',
-            ]);
+        $user = User::factory()->create(['status' => 'suspended', 'password' => 'Secret@Pass123']);
 
-            $this->post('/login', [
-                'email' => $user->email,
-                'password' => 'Secret@Pass123',
-            ])->assertSessionHasErrors('email');
-
-            $this->assertGuest();
-        }
+        $this->post('/login', ['email' => $user->email, 'password' => 'Secret@Pass123'])->assertSessionHasErrors('email');
+        $this->assertGuest();
     }
 
-    public function test_admin_can_approve_registration_with_a_final_role(): void
+    public function test_customers_start_in_the_shop_and_staff_on_the_dashboard(): void
     {
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        $applicant = User::factory()->create([
-            'role' => 'sales_personnel',
-            'status' => 'pending',
-            'requested_role' => 'inventory_clerk',
-        ]);
+        $customer = User::factory()->customer()->create(['password' => 'Secret@Pass123']);
+        $staff = User::factory()->salesPersonnel()->create(['password' => 'Secret@Pass123']);
 
-        $this->actingAs($admin)->patch("/user-management/{$applicant->id}/approve", [
-            'role' => 'inventory_clerk',
-        ])->assertRedirect();
-
-        $this->assertDatabaseHas('users', [
-            'id' => $applicant->id,
-            'status' => 'active',
-            'role' => 'inventory_clerk',
-        ]);
-        $this->assertDatabaseHas('registration_audits', [
-            'applicant_id' => $applicant->id,
-            'administrator_id' => $admin->id,
-            'action' => 'approved',
-            'assigned_role' => 'inventory_clerk',
-        ]);
-
-        $this->post('/logout');
-        $this->post('/login', [
-            'email' => $applicant->email,
-            'password' => 'password',
-        ])->assertRedirect('/dashboard');
-        $this->assertAuthenticatedAs($applicant->fresh());
-    }
-
-    public function test_admin_can_reject_registration_and_non_admin_cannot_decide(): void
-    {
-        $salesUser = User::factory()->create(['role' => 'sales_personnel', 'status' => 'active']);
-        $applicant = User::factory()->create(['status' => 'pending']);
-
-        $this->actingAs($salesUser)->patch("/user-management/{$applicant->id}/reject")
-            ->assertForbidden();
-
-        $admin = User::factory()->create(['role' => 'admin', 'status' => 'active']);
-        $this->actingAs($admin)->patch("/user-management/{$applicant->id}/reject")
-            ->assertRedirect();
-
-        $this->assertDatabaseHas('users', ['id' => $applicant->id, 'status' => 'rejected']);
-        $this->assertDatabaseHas('registration_audits', [
-            'applicant_id' => $applicant->id,
-            'administrator_id' => $admin->id,
-            'action' => 'rejected',
-        ]);
+        $this->post('/login', ['email' => $customer->email, 'password' => 'Secret@Pass123'])->assertRedirect('/shop');
+        auth()->logout();
+        $this->post('/login', ['email' => $staff->email, 'password' => 'Secret@Pass123'])->assertRedirect('/dashboard');
     }
 }

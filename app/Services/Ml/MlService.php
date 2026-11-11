@@ -130,17 +130,19 @@ class MlService
     }
 
     /**
+     * @param  MlModel|list<MlModel>  $models  one model, or two to blend them ("both")
      * @param  array<string, mixed>  $params
      * @param  list<array<string, mixed>>  $products
      * @return array<string, mixed>
      */
-    public function predict(MlModel $model, string $workflow, array $params, array $products = []): array
+    public function predict(MlModel|array $models, string $workflow, array $params, array $products = []): array
     {
+        $models = is_array($models) ? $models : [$models];
+
         return $this->run('predict', [
             'workflow' => $workflow,
             'base_dir' => $this->baseDir(),
-            'model_path' => $model->absolutePath(),
-            'sha256' => $model->file_sha256,
+            'models' => array_map(fn (MlModel $model) => ['model_path' => $model->absolutePath(), 'sha256' => $model->file_sha256], $models),
             'params' => $params,
             'products' => $products,
         ]);

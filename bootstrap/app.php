@@ -19,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/login');
-        $middleware->redirectUsersTo('/dashboard');
+        $middleware->redirectUsersTo(fn (Request $request) => $request->user()?->homePath() ?? '/dashboard');
 
         $middleware->web(append: [
             HandleInertiaRequests::class,

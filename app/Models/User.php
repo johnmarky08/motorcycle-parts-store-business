@@ -23,11 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'role',
-        'requested_role',
-        'affiliation',
         'status',
-        'registration_status_token',
-        'submitted_at',
         'last_login_at',
         'password',
     ];
@@ -52,9 +48,19 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
-            'submitted_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /** Where a signed-in user starts: customers land in the shop, staff on the dashboard. */
+    public function homePath(): string
+    {
+        return $this->role === 'user' ? '/shop' : '/dashboard';
+    }
+
+    public function cartItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CartItem::class);
     }
 
     public function isActive(): bool

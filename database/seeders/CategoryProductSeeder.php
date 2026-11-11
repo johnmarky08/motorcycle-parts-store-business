@@ -24,6 +24,7 @@ class CategoryProductSeeder extends Seeder
                 'category_id' => $category->id,
                 'name' => $row['name'],
                 'description' => $row['description'],
+                'image' => is_file(public_path('images/products/'.$row['sku'].'.svg')) ? 'images/products/'.$row['sku'].'.svg' : null,
                 'selling_price' => $row['selling_price'],
                 'stock_quantity' => (int) $row['stock_quantity'],
                 'reorder_threshold' => (int) $row['reorder_threshold'],

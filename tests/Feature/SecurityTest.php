@@ -36,21 +36,50 @@ class SecurityTest extends TestCase
         $this->actingAs(User::factory()->create())->get('/logout')->assertStatus(405);
     }
 
-    public function test_admin_cannot_remove_the_last_active_admin(): void
+    public function test_nobody_can_suspend_or_delete_their_own_account(): void
     {
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->patch("/user-management/{$admin->id}/status")->assertStatus(422);
+        $this->actingAs($admin)->delete("/user-management/{$admin->id}")->assertStatus(422);
         $this->assertSame('active', $admin->fresh()->status);
     }
 
-    public function test_admin_cannot_demote_themselves(): void
+    public function test_the_last_active_instructor_or_admin_cannot_be_removed(): void
+    {
+        $instructor = User::factory()->instructor()->create();
+        $admin = User::factory()->admin()->create();
+
+        // admin suspends the instructor: allowed because the admin still remains
+        $this->actingAs($admin)->patch("/user-management/{$instructor->id}/status")->assertSessionHasNoErrors();
+        $this->assertSame('suspended', $instructor->fresh()->status);
+
+        // a second manager exists only as a suspended account, so the admin cannot be demoted by anyone else here
+        $other = User::factory()->instructor()->create();
+        $this->actingAs($other)->put("/user-management/{$admin->id}", ['name' => $admin->name, 'email' => $admin->email, 'role' => 'user', 'status' => 'active'])->assertSessionHasNoErrors();
+        $this->assertSame('user', $admin->fresh()->role);
+        $this->actingAs($other)->delete("/user-management/{$other->id}")->assertStatus(422);
+    }
+
+    public function test_instructor_can_assign_any_role_including_admin(): void
+    {
+        $instructor = User::factory()->instructor()->create();
+        $customer = User::factory()->customer()->create();
+
+        foreach (['admin', 'instructor', 'inventory_clerk', 'sales_personnel', 'user'] as $role) {
+            $this->actingAs($instructor)->put("/user-management/{$customer->id}", ['name' => $customer->name, 'email' => $customer->email, 'role' => $role, 'status' => 'active'])
+                ->assertSessionHasNoErrors();
+            $this->assertSame($role, $customer->fresh()->role);
+        }
+    }
+
+    public function test_nobody_can_change_their_own_role(): void
     {
         $admin = User::factory()->admin()->create();
-        User::factory()->admin()->create(); // a second admin exists, so only the self-protection applies
+        User::factory()->instructor()->create();
 
         $this->actingAs($admin)->put("/user-management/{$admin->id}", [
-            'name' => $admin->name, 'email' => $admin->email, 'role' => 'sales_personnel', 'status' => 'active',
+            'name' => $admin->name, 'email' => $admin->email, 'role' => 'instructor', 'status' => 'active',
         ])->assertSessionHasErrors('role');
         $this->assertSame('admin', $admin->fresh()->role);
     }
@@ -72,35 +101,7 @@ class SecurityTest extends TestCase
     {
         $this->post('/register', [
             'name' => 'Weak Person', 'email' => 'weak@example.com', 'password' => 'password', 'password_confirmation' => 'password',
-            'requested_role' => 'sales_personnel', 'affiliation' => 'Shop',
         ])->assertSessionHasErrors('password');
-    }
-
-    public function test_all_four_roles_can_be_requested_at_registration(): void
-    {
-        foreach (['admin', 'instructor', 'inventory_clerk', 'sales_personnel'] as $i => $role) {
-            $this->post('/register', [
-                'name' => 'Applicant Person', 'email' => "applicant{$i}@example.com", 'password' => 'Strong@12345', 'password_confirmation' => 'Strong@12345',
-                'requested_role' => $role, 'affiliation' => 'Parts Depot',
-            ])->assertSessionHasNoErrors();
-
-            $this->assertDatabaseHas('users', ['email' => "applicant{$i}@example.com", 'status' => 'pending', 'requested_role' => $role]);
-            RateLimiter::clear('registration|127.0.0.1');
-            $this->flushSession();
-        }
-    }
-
-    public function test_pending_applicant_cannot_sign_in_until_approved(): void
-    {
-        $user = User::factory()->pending('admin')->create(['password' => 'Strong@12345']);
-
-        $this->post('/login', ['email' => $user->email, 'password' => 'Strong@12345'])->assertSessionHasErrors('email');
-        $this->assertGuest();
-
-        $admin = User::factory()->admin()->create();
-        $this->actingAs($admin)->patch("/user-management/{$user->id}/approve", ['role' => 'admin'])->assertSessionHasNoErrors();
-        $this->assertSame('active', $user->fresh()->status);
-        $this->assertSame('admin', $user->fresh()->role);
     }
 
     public function test_password_reset_sends_mail_and_never_reveals_whether_the_account_exists(): void

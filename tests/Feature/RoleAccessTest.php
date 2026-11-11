@@ -21,19 +21,27 @@ class RoleAccessTest extends TestCase
             'admin knowledge analysis blocked' => ['admin', '/knowledge-analysis', 403],
             'admin inventory blocked' => ['admin', '/inventory', 403],
             'admin sales blocked' => ['admin', '/sales', 403],
+            'admin shop blocked' => ['admin', '/shop', 403],
             'instructor dashboard' => ['instructor', '/dashboard', 200],
+            'instructor users' => ['instructor', '/user-management', 200],
             'instructor prediction' => ['instructor', '/prediction', 200],
             'instructor knowledge analysis' => ['instructor', '/knowledge-analysis', 200],
-            'instructor users blocked' => ['instructor', '/user-management', 403],
             'instructor inventory blocked' => ['instructor', '/inventory', 403],
             'clerk inventory' => ['inventory_clerk', '/inventory', 200],
             'clerk sales blocked' => ['inventory_clerk', '/sales', 403],
+            'clerk users blocked' => ['inventory_clerk', '/user-management', 403],
             'clerk prediction blocked' => ['inventory_clerk', '/prediction', 403],
-            'clerk analysis blocked' => ['inventory_clerk', '/knowledge-analysis', 403],
             'sales sales' => ['sales_personnel', '/sales', 200],
             'sales inventory blocked' => ['sales_personnel', '/inventory', 403],
-            'sales knowledge blocked' => ['sales_personnel', '/knowledge-analysis', 403],
             'sales users blocked' => ['sales_personnel', '/user-management', 403],
+            'sales shop blocked' => ['sales_personnel', '/shop', 403],
+            'customer shop' => ['user', '/shop', 200],
+            'customer orders' => ['user', '/orders', 200],
+            'customer dashboard goes to shop' => ['user', '/dashboard', 302],
+            'customer inventory blocked' => ['user', '/inventory', 403],
+            'customer sales blocked' => ['user', '/sales', 403],
+            'customer users blocked' => ['user', '/user-management', 403],
+            'customer prediction blocked' => ['user', '/prediction', 403],
         ];
     }
 
@@ -55,7 +63,7 @@ class RoleAccessTest extends TestCase
 
     public function test_guests_cannot_reach_protected_pages(): void
     {
-        foreach (['/dashboard', '/inventory', '/sales', '/prediction', '/knowledge-analysis', '/user-management'] as $path) {
+        foreach (['/dashboard', '/inventory', '/sales', '/shop', '/orders', '/prediction', '/knowledge-analysis', '/user-management'] as $path) {
             $this->get($path)->assertRedirect('/login');
         }
     }

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img" aria-label="Brake Disc Rotor">
+<defs><linearGradient id="bgBrakeDiscRot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fee2e2"/><stop offset="1" stop-color="#fecaca"/></linearGradient></defs>
+<rect width="600" height="450" fill="url(#bgBrakeDiscRot)"/>
+<circle cx="300" cy="190" r="150" fill="#ffffff" opacity=".55"/>
+<ellipse cx="300" cy="332" rx="130" ry="14" fill="#0f172a" opacity=".12"/>
+<circle cx="300" cy="190" r="115" fill="#475569"/><circle cx="300" cy="190" r="100" fill="#bb2020" opacity=".9"/><circle cx="370.0" cy="190.0" r="9" fill="#f8fafc"/><circle cx="349.5" cy="239.5" r="9" fill="#f8fafc"/><circle cx="300.1" cy="260.0" r="9" fill="#f8fafc"/><circle cx="250.6" cy="239.6" r="9" fill="#f8fafc"/><circle cx="230.0" cy="190.1" r="9" fill="#f8fafc"/><circle cx="250.4" cy="140.6" r="9" fill="#f8fafc"/><circle cx="299.8" cy="120.0" r="9" fill="#f8fafc"/><circle cx="349.4" cy="140.4" r="9" fill="#f8fafc"/>
+<circle cx="300" cy="190" r="34" fill="#0f172a"/><circle cx="300" cy="190" r="14" fill="#f8fafc"/>
+<rect x="40" y="368" width="520" height="54" rx="14" fill="#ffffff" opacity=".92"/>
+<text x="300" y="393" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Brake Disc Rotor</text>
+<text x="300" y="413" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#64748b">Brake System · BD-UNI-011</text>
+</svg>

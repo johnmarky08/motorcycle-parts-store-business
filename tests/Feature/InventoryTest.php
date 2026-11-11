@@ -60,7 +60,7 @@ class InventoryTest extends TestCase
         $category = $this->category();
         $best = Product::create(['category_id' => $category->id, 'name' => 'Best', 'sku' => 'BEST', 'selling_price' => 10, 'stock_quantity' => 5, 'reorder_threshold' => 1]);
         $never = Product::create(['category_id' => $category->id, 'name' => 'Never', 'sku' => 'NEVER', 'selling_price' => 10, 'stock_quantity' => 5, 'reorder_threshold' => 1]);
-        $sale = Sale::create(['user_id' => $admin->id, 'transaction_number' => 'TX-INV-1', 'transaction_date' => now(), 'status' => 'completed', 'payment_method' => 'Cash', 'total_amount' => 20]);
+        $sale = Sale::create(['customer_id' => $admin->id, 'transaction_number' => 'TX-INV-1', 'transaction_date' => now(), 'payment_method' => 'Cash', 'total_amount' => 20]);
         $sale->items()->create(['product_id' => $best->id, 'product_name' => 'Best', 'sku' => 'BEST', 'quantity' => 2, 'unit_price' => 10, 'line_total' => 20]);
 
         $this->actingAs($admin)->get('/inventory?sort=best_selling')
@@ -102,7 +102,7 @@ class InventoryTest extends TestCase
         $clerk = User::factory()->create(['role' => 'inventory_clerk', 'status' => 'active']);
         $sales = User::factory()->create(['role' => 'sales_personnel', 'status' => 'active']);
         $product = Product::create(['category_id' => $this->category()->id, 'name' => 'Brake Pad', 'sku' => 'BRAKE', 'selling_price' => 100, 'stock_quantity' => 5, 'reorder_threshold' => 1]);
-        $sale = Sale::create(['user_id' => $sales->id, 'transaction_number' => 'TX-INV-2', 'transaction_date' => now(), 'status' => 'completed', 'payment_method' => 'Cash', 'total_amount' => 100]);
+        $sale = Sale::create(['customer_id' => $sales->id, 'transaction_number' => 'TX-INV-2', 'transaction_date' => now(), 'payment_method' => 'Cash', 'total_amount' => 100]);
         $sale->items()->create(['product_id' => $product->id, 'product_name' => 'Brake Pad', 'sku' => 'BRAKE', 'quantity' => 1, 'unit_price' => 100, 'line_total' => 100]);
 
         $this->actingAs($sales)->get('/inventory')->assertForbidden();

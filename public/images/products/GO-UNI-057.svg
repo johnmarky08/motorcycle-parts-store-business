@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img" aria-label="Gear Oil 80W-90">
+<defs><linearGradient id="bgGearOil80W90" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffedd5"/><stop offset="1" stop-color="#fed7aa"/></linearGradient></defs>
+<rect width="600" height="450" fill="url(#bgGearOil80W90)"/>
+<circle cx="300" cy="190" r="150" fill="#ffffff" opacity=".55"/>
+<ellipse cx="300" cy="332" rx="130" ry="14" fill="#0f172a" opacity=".12"/>
+<rect x="270" y="78" width="60" height="38" rx="8" fill="#0f172a"/><path d="M262 116h76l20 28v120a20 20 0 0 1-20 20H262a20 20 0 0 1-20-20V144z" fill="#c2410c"/>
+<rect x="250" y="168" width="100" height="70" rx="10" fill="#f8fafc"/><path d="M300 178c-14 18-20 28-20 38a20 20 0 0 0 40 0c0-10-6-20-20-38z" fill="#c2410c"/>
+<rect x="40" y="368" width="520" height="54" rx="14" fill="#ffffff" opacity=".92"/>
+<text x="300" y="393" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Gear Oil 80W-90</text>
+<text x="300" y="413" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#64748b">Lubricants · GO-UNI-057</text>
+</svg>

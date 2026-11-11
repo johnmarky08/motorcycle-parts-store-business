@@ -16,28 +16,15 @@ class NotificationFeed
     {
         $items = [];
 
-        if ($user->hasRole(Role::Admin)) {
-            $pending = User::where('status', 'pending')->count();
-            if ($pending > 0) {
-                $items[] = [
-                    'id' => "pending:{$pending}",
-                    'type' => 'sales',
-                    'title' => 'Registrations awaiting approval',
-                    'description' => $pending.' '.($pending === 1 ? 'account is' : 'accounts are').' waiting for an administrator decision.',
-                    'timestamp' => 'Current',
-                ];
-            }
-        }
-
         if ($user->hasRole(Role::Admin, Role::InventoryClerk)) {
             $out = Product::query()->outOfStock()->orderBy('name')->limit(3)->get(['id', 'name', 'sku']);
             foreach ($out as $product) {
                 $items[] = [
                     'id' => "out:{$product->id}",
                     'type' => 'critical',
-                    'title' => 'Product is out of stock',
+                    'title' => 'Product Is Out Of Stock',
                     'description' => "{$product->name} · {$product->sku} has no remaining stock.",
-                    'timestamp' => 'Needs restocking',
+                    'timestamp' => 'Needs Restocking',
                 ];
             }
             $low = Product::query()->lowStock()->count();
@@ -45,7 +32,7 @@ class NotificationFeed
                 $items[] = [
                     'id' => "low:{$low}",
                     'type' => 'stock',
-                    'title' => 'Low-stock products need attention',
+                    'title' => 'Low-Stock Products Need Attention',
                     'description' => $low.' '.($low === 1 ? 'product is' : 'products are').' at or below the reorder threshold.',
                     'timestamp' => 'Current',
                 ];
@@ -53,12 +40,12 @@ class NotificationFeed
         }
 
         if ($user->hasRole(Role::SalesPersonnel)) {
-            foreach (Sale::latest('transaction_date')->limit(2)->get(['id', 'transaction_number', 'total_amount', 'transaction_date']) as $sale) {
+            foreach (Sale::latest('transaction_date')->limit(3)->get(['id', 'transaction_number', 'customer_name', 'total_amount', 'transaction_date']) as $sale) {
                 $items[] = [
                     'id' => "sale:{$sale->id}",
                     'type' => 'sales',
-                    'title' => 'Sales activity recorded',
-                    'description' => "{$sale->transaction_number} · ₱".number_format((float) $sale->total_amount, 2),
+                    'title' => 'New Order Received',
+                    'description' => "{$sale->transaction_number} · {$sale->customer_name} · ₱".number_format((float) $sale->total_amount, 2),
                     'timestamp' => $sale->transaction_date->diffForHumans(),
                 ];
             }
@@ -69,7 +56,7 @@ class NotificationFeed
                 $items[] = [
                     'id' => "model:{$model->id}",
                     'type' => 'sales',
-                    'title' => 'Model ready',
+                    'title' => 'Model Ready',
                     'description' => $model->name.' v'.$model->version.' is available for predictions.',
                     'timestamp' => $model->trained_at?->diffForHumans() ?? '',
                 ];

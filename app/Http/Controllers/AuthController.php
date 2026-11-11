@@ -21,23 +21,16 @@ class AuthController extends Controller
         return Inertia::render('Login');
     }
 
-    public function showRegister(Request $request): Response
+    public function showRegister(): Response
     {
-        $registration = null;
-        $token = $request->string('status_token')->toString();
-
-        if ($token !== '') {
-            $registration = $this->registrationForToken($token);
-        }
-
-        return Inertia::render('Register', ['registration' => $registration]);
+        return Inertia::render('Register');
     }
 
     public function register(Request $request): RedirectResponse
     {
         $key = 'registration|' . $request->ip();
 
-        if (RateLimiter::tooManyAttempts($key, 3)) {
+        if (RateLimiter::tooManyAttempts($key, 10)) {
             return back()->withErrors(['email' => 'Too many registration attempts. Try again later.'])->withInput();
         }
 
@@ -47,43 +40,24 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'min:2', 'max:120', "regex:/^[\p{L}\p{M}\s.'\-]+$/u"],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
             'password' => ['required', 'confirmed', PasswordRule::defaults()],
-            'requested_role' => ['required', 'in:admin,instructor,inventory_clerk,sales_personnel'],
-            'affiliation' => ['required', 'string', 'max:255'],
         ], ['name.regex' => 'Name may only contain letters, spaces, apostrophes, periods and hyphens.']);
 
-        $token = Str::random(64);
-
-        $user = \App\Models\User::create([
+        // Everyone who registers is a customer ("user"); staff roles are assigned in User Management.
+        $user = new \App\Models\User([
             'name' => $data['name'],
             'email' => Str::lower($data['email']),
             'password' => $data['password'],
-            'role' => 'sales_personnel',
-            'requested_role' => $data['requested_role'],
-            'affiliation' => $data['affiliation'],
-            'status' => 'pending',
-            'registration_status_token' => hash('sha256', $token),
-            'submitted_at' => now(),
         ]);
-        Log::channel('security')->info('auth.registration_submitted', ['user_id' => $user->id, 'requested_role' => $data['requested_role'], 'ip' => $request->ip()]);
+        $user->role = 'user';
+        $user->status = 'active';
+        $user->save();
 
-        return redirect('/register?status_token=' . urlencode($token));
-    }
+        Auth::login($user);
+        $request->session()->regenerate();
+        $user->forceFill(['last_login_at' => now()])->save();
+        Log::channel('security')->info('auth.registered', ['user_id' => $user->id, 'ip' => $request->ip()]);
 
-    private function registrationForToken(string $token): ?array
-    {
-        $user = \App\Models\User::query()
-            ->where('registration_status_token', hash('sha256', $token))
-            ->first();
-
-        if (! $user) {
-            return null;
-        }
-
-        return [
-            'status' => $user->status,
-            'submitted_at' => $user->submitted_at?->toIso8601String(),
-            'requested_role' => $user->requested_role,
-        ];
+        return redirect($user->homePath());
     }
 
     public function login(Request $request): RedirectResponse
@@ -114,8 +88,6 @@ class AuthController extends Controller
 
             if ($account && Hash::check($credentials['password'], $account->password)) {
                 $message = match ($account->status) {
-                    'pending' => 'Your registration is awaiting administrator approval.',
-                    'rejected' => 'Your registration was not approved. Contact an administrator if you need more information.',
                     'suspended' => 'This account is suspended. Contact an administrator for assistance.',
                     default => $message,
                 };
@@ -131,7 +103,7 @@ class AuthController extends Controller
         $request->user()->forceFill(['last_login_at' => now()])->save();
         Log::channel('security')->info('auth.login', ['user_id' => $request->user()->id, 'ip' => $request->ip()]);
 
-        return redirect()->intended('/dashboard');
+        return redirect()->intended($request->user()->homePath());
     }
 
     public function logout(Request $request): RedirectResponse

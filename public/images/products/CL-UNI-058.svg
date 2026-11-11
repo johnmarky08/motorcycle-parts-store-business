@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img" aria-label="Chain Lube 400ml">
+<defs><linearGradient id="bgChainLube400" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffedd5"/><stop offset="1" stop-color="#fed7aa"/></linearGradient></defs>
+<rect width="600" height="450" fill="url(#bgChainLube400)"/>
+<circle cx="300" cy="190" r="150" fill="#ffffff" opacity=".55"/>
+<ellipse cx="300" cy="332" rx="130" ry="14" fill="#0f172a" opacity=".12"/>
+<rect x="270" y="72" width="60" height="30" rx="8" fill="#475569"/><rect x="250" y="100" width="100" height="180" rx="20" fill="#e84e0e"/>
+<rect x="262" y="150" width="76" height="76" rx="10" fill="#f8fafc"/><path d="M300 162c-10 14-14 20-14 28a14 14 0 0 0 28 0c0-8-4-14-14-28z" fill="#e84e0e"/>
+<rect x="40" y="368" width="520" height="54" rx="14" fill="#ffffff" opacity=".92"/>
+<text x="300" y="393" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Chain Lube 400ml</text>
+<text x="300" y="413" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#64748b">Lubricants · CL-UNI-058</text>
+</svg>

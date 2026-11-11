@@ -106,4 +106,34 @@ class PredictionAndAnalysisTest extends TestCase
         $this->assertTrue($new->fresh()->is_active);
         $this->assertFalse($old->fresh()->is_active);
     }
+
+    public function test_both_models_need_both_trained_models(): void
+    {
+        MlModel::factory()->active()->create(['task' => 'sales', 'algorithm' => 'simple_linear_regression']);
+
+        $this->actingAs(User::factory()->instructor()->create())
+            ->postJson('/prediction/run', ['workflow' => 'sales', 'model' => 'both', 'horizon_days' => 30])
+            ->assertStatus(409)->assertJsonPath('code', 'no_model');
+    }
+
+    public function test_prediction_accepts_the_both_option(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())
+            ->postJson('/prediction/run', ['workflow' => 'sales', 'model' => 'both', 'horizon_days' => 30])
+            ->assertStatus(409); // validation passed; there is simply no model in this empty test database
+    }
+
+    public function test_refreshing_datasets_from_orders_needs_enough_orders(): void
+    {
+        $customer = User::factory()->customer()->create();
+        \App\Models\Sale::create(['customer_id' => $customer->id, 'customer_name' => $customer->name, 'transaction_number' => 'TX-1', 'transaction_date' => now(), 'payment_method' => 'Cash', 'total_amount' => 10]);
+
+        $this->actingAs(User::factory()->instructor()->create())->post('/knowledge-analysis/datasets/refresh')->assertSessionHas('error');
+        $this->assertDatabaseCount('datasets', 0);
+    }
+
+    public function test_admin_cannot_refresh_datasets(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())->post('/knowledge-analysis/datasets/refresh')->assertForbidden();
+    }
 }

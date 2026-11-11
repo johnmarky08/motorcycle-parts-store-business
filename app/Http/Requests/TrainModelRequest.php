@@ -18,7 +18,7 @@ class TrainModelRequest extends FormRequest
     {
         return [
             'dataset_id' => ['required', 'integer', 'exists:datasets,id'],
-            'algorithm' => ['required', Rule::in(array_keys(MlModel::ALGORITHMS))],
+            'algorithm' => ['required', Rule::in([...array_keys(MlModel::ALGORITHMS), 'both'])],
             'split' => ['required', Rule::in(['0.7', '0.8', '0.9', 0.7, 0.8, 0.9])],
             'tune' => ['nullable', 'boolean'],
             'seasonal' => ['nullable', 'boolean'],

@@ -2,103 +2,64 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
 use App\Models\Sale;
-use App\Models\StockMovement;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Support\Like;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
+/** Read-only transaction history for sales personnel: orders are placed by customers in the shop. */
 class SalesController extends Controller
 {
     public function index(Request $request): Response
     {
-        $sales = Sale::with('items')
-            ->when($request->string('search')->isNotEmpty(), fn ($query) => $query->where('transaction_number', 'like', '%' . Like::escape($request->string('search')->toString()) . '%'))
-            ->when($request->filled('date'), fn ($query) => $query->whereDate('transaction_date', $request->input('date')))
-            ->when($request->string('payment_method')->isNotEmpty(), fn ($query) => $query->where('payment_method', $request->string('payment_method')))
-            ->when($request->string('status')->isNotEmpty(), fn ($query) => $query->where('status', $request->string('status')))
-            ->latest('transaction_date')
-            ->paginate(20)
-            ->withQueryString();
-
-        return Inertia::render('SalesManagement', [
-            'transactions' => $sales,
-            'products' => Product::orderBy('name')->get(['id', 'name', 'sku', 'selling_price', 'stock_quantity']),
-            'filters' => $request->only(['search', 'date', 'payment_method', 'status']),
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:60'],
+            'payment_method' => ['nullable', Rule::in(config('store.payment_methods'))],
+            'date_from' => ['nullable', 'date_format:Y-m-d'],
+            'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
         ]);
-    }
 
-    public function show(Sale $sale): Response
-    {
-        return Inertia::render('SalesManagement', [
-            'selectedTransaction' => $sale->load('items'),
-            'transactions' => Sale::with('items')->latest('transaction_date')->paginate(20),
-            'products' => Product::orderBy('name')->get(['id', 'name', 'sku', 'selling_price', 'stock_quantity']),
-        ]);
-    }
+        $query = Sale::query()
+            ->when($filters['search'] ?? null, function ($query, $search) {
+                $term = '%'.Like::escape($search).'%';
+                $query->where(fn ($query) => $query->where('transaction_number', 'like', $term)->orWhere('customer_name', 'like', $term));
+            })
+            ->when($filters['payment_method'] ?? null, fn ($query, $method) => $query->where('payment_method', $method))
+            ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('transaction_date', '>=', $date))
+            ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('transaction_date', '<=', $date));
 
-    public function store(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'idempotency_key' => ['required', 'string', 'uuid'],
-            'payment_method' => ['required', Rule::in(config('store.payment_methods'))],
-            'items' => ['required', 'array', 'min:1', 'max:50'],
-            'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
-            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:1000'],
-        ]);
-        $data['items'] = collect($data['items'])->sortBy('product_id')->values()->all(); // consistent lock order avoids deadlocks
+        $totals = (clone $query)->selectRaw('COUNT(*) as transactions, COALESCE(SUM(total_amount), 0) as total')->first();
 
-        $sale = DB::transaction(function () use ($data, $request) {
-            abort_if(Sale::where('idempotency_key', $data['idempotency_key'])->exists(), 422, 'This sale has already been submitted.');
-            $items = [];
-            $total = 0;
-
-            foreach ($data['items'] as $item) {
-                $product = Product::query()->lockForUpdate()->findOrFail($item['product_id']);
-                abort_if($product->stock_quantity < $item['quantity'], 422, "Insufficient stock for {$product->name}.");
-                $lineTotal = $product->selling_price * $item['quantity'];
-                $items[] = [
-                    'product_id' => $product->id,
-                    'product_name' => $product->name,
-                    'sku' => $product->sku,
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $product->selling_price,
-                    'line_total' => $lineTotal,
-                ];
-                $total += $lineTotal;
-                $product->decrement('stock_quantity', $item['quantity']);
-                StockMovement::create([
-                    'product_id' => $product->id,
-                    'user_id' => $request->user()->id,
-                    'movement_type' => 'sale',
-                    'quantity' => -$item['quantity'],
-                    'balance_after' => $product->stock_quantity,
-                    'note' => 'Sale transaction',
-                ]);
-            }
-
-            $sale = Sale::create([
-                'user_id' => $request->user()->id,
-                'transaction_number' => 'TX-' . now()->format('YmdHis') . '-' . Str::upper(Str::random(4)),
-                'idempotency_key' => $data['idempotency_key'],
-                'transaction_date' => now(),
-                'status' => 'completed',
-                'payment_method' => $data['payment_method'],
-                'total_amount' => $total,
+        $transactions = $query->with('items')->latest('transaction_date')->latest('id')->paginate(15)->withQueryString()
+            ->through(fn (Sale $sale) => [
+                'id' => $sale->id,
+                'transaction_number' => $sale->transaction_number,
+                'transaction_date' => $sale->transaction_date->toIso8601String(),
+                'customer_name' => $sale->customer_name ?? 'Walk-In Customer',
+                'payment_method' => $sale->payment_method,
+                'total_amount' => (float) $sale->total_amount,
+                'items' => $sale->items->map(fn ($item) => [
+                    'product_name' => $item->product_name, 'sku' => $item->sku, 'quantity' => $item->quantity,
+                    'unit_price' => (float) $item->unit_price, 'line_total' => (float) $item->line_total,
+                ])->values(),
             ]);
-            $sale->items()->createMany($items);
 
-            return $sale;
-        });
-        Log::channel('security')->info('sale.created', ['sale_id' => $sale->id, 'user_id' => $request->user()->id, 'total' => $sale->total_amount]);
-
-        return back()->with('status', 'Sale completed successfully.');
+        return Inertia::render('SalesManagement', [
+            'transactions' => $transactions,
+            'filters' => [
+                'search' => $filters['search'] ?? '',
+                'payment_method' => $filters['payment_method'] ?? '',
+                'date_from' => $filters['date_from'] ?? '',
+                'date_to' => $filters['date_to'] ?? '',
+            ],
+            'summary' => [
+                'transactions' => (int) $totals->transactions,
+                'total' => (float) $totals->total,
+                'average' => $totals->transactions > 0 ? round($totals->total / $totals->transactions, 2) : 0,
+            ],
+            'paymentMethods' => config('store.payment_methods'),
+        ]);
     }
 }

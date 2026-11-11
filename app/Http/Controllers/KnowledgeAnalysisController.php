@@ -7,6 +7,7 @@ use App\Http\Requests\UploadDatasetRequest;
 use App\Models\Dataset;
 use App\Models\MlModel;
 use App\Services\Datasets\DatasetException;
+use App\Services\Datasets\DatasetExporter;
 use App\Services\Datasets\DatasetInspector;
 use App\Services\Datasets\DatasetRegistry;
 use App\Services\Ml\MlException;
@@ -57,20 +58,39 @@ class KnowledgeAnalysisController extends Controller
     {
         $data = $request->validated();
         $dataset = Dataset::findOrFail($data['dataset_id']);
+        $algorithms = $data['algorithm'] === 'both' ? array_keys(MlModel::ALGORITHMS) : [$data['algorithm']];
 
+        $messages = [];
         try {
-            $model = $ml->train($dataset, $data['algorithm'], [
-                'split' => (float) $data['split'],
-                'tune' => $request->boolean('tune'),
-                'seasonal' => $request->boolean('seasonal'),
-            ], $request->user());
+            foreach ($algorithms as $algorithm) {
+                $model = $ml->train($dataset, $algorithm, [
+                    'split' => (float) $data['split'],
+                    'tune' => $request->boolean('tune') && $algorithm === 'random_forest_regression',
+                    'seasonal' => $request->boolean('seasonal') && $algorithm === 'simple_linear_regression',
+                ], $request->user());
+                $mape = $model->mape === null ? 'n/a' : number_format($model->mape, 1).'%';
+                $messages[] = "{$model->algorithmLabel()} v{$model->version} (MAPE {$mape})";
+            }
         } catch (MlException $e) {
             return back()->with('error', $e->getMessage());
         }
 
-        $mape = $model->mape === null ? 'n/a' : number_format($model->mape, 1).'%';
+        return back()->with('status', 'Trained and saved: '.implode(' and ', $messages).'.');
+    }
 
-        return back()->with('status', "{$model->algorithmLabel()} trained and saved as v{$model->version} (MAPE {$mape}).");
+    public function refreshFromOrders(Request $request, DatasetExporter $exporter): RedirectResponse
+    {
+        try {
+            $datasets = $exporter->refresh($request->user());
+        } catch (DatasetException $e) {
+            return back()->with('error', 'The datasets could not be refreshed: '.$e->getMessage());
+        }
+
+        return redirect('/knowledge-analysis?dataset='.$datasets['sales']->id)->with('status', sprintf(
+            'Datasets refreshed from orders: %s sales rows and %s weekly demand rows.',
+            number_format($datasets['sales']->records),
+            number_format($datasets['demand']->records)
+        ));
     }
 
     public function upload(UploadDatasetRequest $request, DatasetRegistry $registry): RedirectResponse

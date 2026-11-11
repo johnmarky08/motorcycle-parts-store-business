@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img" aria-label="Yamaha MT-15 Air">
+<defs><linearGradient id="bgYamahaMT15Ai" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cffafe"/><stop offset="1" stop-color="#a5f3fc"/></linearGradient></defs>
+<rect width="600" height="450" fill="url(#bgYamahaMT15Ai)"/>
+<circle cx="300" cy="190" r="150" fill="#ffffff" opacity=".55"/>
+<ellipse cx="300" cy="332" rx="130" ry="14" fill="#0f172a" opacity=".12"/>
+<rect x="190" y="100" width="220" height="40" rx="12" fill="#0f172a"/><rect x="190" y="236" width="220" height="40" rx="12" fill="#0f172a"/>
+<rect x="198" y="136" width="204" height="108" fill="#f8fafc"/><rect x="208" y="124" width="12" height="128" rx="3" fill="#0f7f9e" opacity="0.65"/><rect x="230" y="124" width="12" height="128" rx="3" fill="#0f7f9e" opacity="0.95"/><rect x="252" y="124" width="12" height="128" rx="3" fill="#0f7f9e" opacity="0.65"/><rect x="274" y="124" width="12" height="128" rx="3" fill="#0f7f9e" opacity="0.95"/><rect x="296" y="124" width="12" height="128" rx="3" fill="#0f7f9e" opacity="0.65"/><rect x="318" y="124" width="12" height="128" rx="3" fill="#0f7f9e" opacity="0.95"/><rect x="340" y="124" width="12" height="128" rx="3" fill="#0f7f9e" opacity="0.65"/><rect x="362" y="124" width="12" height="128" rx="3" fill="#0f7f9e" opacity="0.95"/>
+<rect x="40" y="368" width="520" height="54" rx="14" fill="#ffffff" opacity=".92"/>
+<text x="300" y="393" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Yamaha MT-15 Air</text>
+<text x="300" y="413" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#64748b">Filters · AF-YM-021</text>
+</svg>

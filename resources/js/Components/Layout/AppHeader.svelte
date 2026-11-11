@@ -82,7 +82,7 @@
 
 <header class="relative flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-8">
     <div class="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation menu" aria-expanded={mobileMenuOpen} onclick={() => (mobileMenuOpen = true)}>
+        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open Navigation Menu" aria-expanded={mobileMenuOpen} onclick={() => (mobileMenuOpen = true)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </Button>
         <div class="hidden h-5 w-px bg-slate-200 lg:block"></div>
@@ -117,16 +117,16 @@
                 <div>
                     <h2 class="text-sm font-semibold text-slate-900">Notifications</h2>
                     <p class="mt-0.5 text-xs text-slate-500">
-                        {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}` : "You're all caught up"}
+                        {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}` : "You'Re All Caught Up"}
                     </p>
                 </div>
                 <div class="flex items-center gap-2">
                     {#if unreadCount > 0}
                         <button type="button" class="text-[11px] font-semibold text-blue-600 hover:text-blue-700" onclick={markAllAsRead}>
-                            Mark all as read
+                            Mark All As Read
                         </button>
                     {/if}
-                    <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label="Close notifications" onclick={closeNotifications}>
+                    <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label="Close Notifications" onclick={closeNotifications}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
                     </button>
                 </div>
@@ -166,7 +166,7 @@
             {:else}
                 <div class="px-5 py-8 text-center">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" class="mx-auto h-8 w-8 text-slate-300" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
-                    <h3 class="mt-3 text-xs font-semibold text-slate-700">No notifications</h3>
+                    <h3 class="mt-3 text-xs font-semibold text-slate-700">No Notifications</h3>
                     <p class="mt-1 text-[11px] text-slate-500">New activity will appear here.</p>
                 </div>
             {/if}

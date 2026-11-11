@@ -229,3 +229,19 @@ def predict(bundle: dict, algorithm: str, horizon_days: int, history_months: int
         "forecast_end": (week_starts[0] + timedelta(days=horizon_days - 1)).strftime("%Y-%m-%d"),
         "history_weekly": history, "forecast_weekly": forecast,
     }
+
+
+def combine_sales(results: list[dict]) -> dict:
+    """Average of several single-model sales results."""
+    first = results[0]
+    mean = lambda key: float(np.mean([r[key] for r in results]))
+    total = mean("predicted_total")
+    prev = first["previous_period_total"]
+    return {
+        "predicted_total": round(total, 2), "lower": round(mean("lower"), 2), "upper": round(mean("upper"), 2),
+        "daily_average": round(mean("daily_average"), 2), "previous_period_total": prev,
+        "change_percent": None if prev <= 0 else round((total - prev) / prev * 100, 2),
+        "forecast_start": first["forecast_start"], "forecast_end": first["forecast_end"], "history_weekly": first["history_weekly"],
+        "forecast_weekly": [{"label": first["forecast_weekly"][k]["label"], "value": round(float(np.mean([r["forecast_weekly"][k]["value"] for r in results])), 2)}
+                            for k in range(len(first["forecast_weekly"]))],
+    }

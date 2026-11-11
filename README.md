@@ -7,30 +7,37 @@ Laravel 12 · Inertia 3 · Svelte 5 · Tailwind · MySQL/MariaDB · Python (scik
 
 | Area | What it does |
 | --- | --- |
-| Accounts | Sign up with a requested role, administrator approval, sign in, password reset by email, role-based access |
+| Shop (User role) | Catalog of every part with name, category, picture, price and stock; search, category filters and sorting; product details; cart with edit and remove; checkout with a payment method; order history |
+| Accounts | Register (instant customer account), sign in, password reset by email, role-based access |
 | Inventory | Products, categories, audited stock movements (received / reduction / sale / correction), low and out-of-stock tracking |
-| Sales | Multi-item transactions, history with filters, stock deducted atomically, duplicate-submit protection |
-| User management | Approve or reject registrations (any of the four roles), edit, suspend, delete users |
-| Knowledge analysis | Dataset preview and upload, Simple Linear Regression and Random Forest Regression, train / save / load models, evaluation metrics with descriptions |
-| Prediction | Product demand, sales, slow-moving products, best-selling products |
-| Dashboard | Role-specific cards and charts |
+| Sales | Every customer order becomes a sale automatically (stock is deducted atomically); sales staff see the full history with customer names, filters and a date range. Read-only: nobody enters sales by hand |
+| User management | Instructor and admin change any account to any role, suspend or delete users |
+| Knowledge analysis | Dataset preview, upload and refresh from orders; Simple Linear Regression, Random Forest Regression or both; train / save / load models; evaluation metrics with descriptions |
+| Prediction | Product demand, sales, slow-moving products, best-selling products — with either model or both combined |
+| Dashboard | Role-specific cards and charts (customers have no dashboard: they start in the shop) |
 
 ### Roles and access
 
 | Role | Can open |
 | --- | --- |
+| User (customer) | Shop, My Orders |
 | Inventory clerk | Dashboard, Inventory Management |
-| Sales personnel | Dashboard, Sales Management |
-| Admin | Dashboard (full), User Management, Prediction (inputs and outputs only — no metrics) |
-| Instructor | Dashboard (full), Prediction, Knowledge Analysis (datasets, training, evaluation metrics and descriptions) |
+| Sales personnel | Dashboard, Sales Management (read-only history) |
+| Admin | Dashboard, User Management, Prediction (inputs and outputs only — no metrics) |
+| Instructor | Dashboard, User Management, Prediction, Knowledge Analysis (datasets, training, evaluation metrics and descriptions) |
 
-Access is enforced on the server by route middleware (`role:`), not only by hiding menu items.
+The instructor is the most powerful role, then the admin. Both can change any account to any role, but nobody can change or delete their own
+account there, and at least one active instructor or admin always remains. Access is enforced on the server by route middleware, and the
+dashboard only offers links to pages the role may open.
 
-### Registration flow
+### Registration and shopping flow
 
-1. A visitor requests access on **Sign up** (name, email, password, requested role, affiliation). All four roles can be requested.
-2. The account is **pending** and cannot sign in. The applicant gets a private status link.
-3. An admin approves it in **User Management** (and may grant a different role than requested) or rejects it.
+1. Anyone can **Register** with name, email and password. The account is a **User** (customer) and is active immediately — the browser cannot choose a role.
+2. Staff accounts are created or changed by an instructor or admin in **User Management**.
+3. A customer adds parts to the cart (quantity can be edited or items removed), chooses a payment method and presses **Place Order**.
+   There is no online payment gateway: the payment method is recorded only. Prices come from the database and stock is re-checked at checkout.
+4. The order is saved as a sale with the customer's name, appears in the customer's **My Orders** and in the sales history, reduces stock and is
+   written to the stock movement log. A retried or double-clicked checkout cannot create two orders.
 
 ## 2. Setup
 
@@ -46,12 +53,12 @@ php artisan key:generate
 #   CREATE DATABASE motorcycle_parts_store_management_system CHARACTER SET utf8mb4;
 
 pip install -r ml/requirements.txt         # a virtualenv named .venv in the project folder is picked up automatically
-php artisan migrate:fresh --seed           # tables, accounts, 63 products, 14,385 sales, datasets, 4 trained models
+php artisan migrate:fresh --seed           # tables, accounts, 48 customers, 63 products with pictures, 14,385 sales, datasets, 4 trained models
 npm run build                              # or: npm run dev
 php artisan serve
 ```
 
-Open http://localhost:8000 — `/` goes to the sign-in page.
+Open http://localhost:8000 — `/` goes to the sign-in page. Customers land in the shop after signing in; staff land on the dashboard.
 
 `migrate --seed` also trains the four starter models. If Python is not ready it only prints a warning; install the packages and run
 `php artisan ml:train` (add `--tune` for hyper-parameter tuning). Set `ML_PYTHON` in `.env` when the right Python is not found
@@ -61,12 +68,13 @@ Open http://localhost:8000 — `/` goes to the sign-in page.
 
 | Role | Email | Password |
 | --- | --- | --- |
-| Admin | admin@oneprompt.test | Admin@12345 |
 | Instructor | instructor@oneprompt.test | Instructor@12345 |
+| Admin | admin@oneprompt.test | Admin@12345 |
 | Inventory clerk | inventory@oneprompt.test | Inventory@12345 |
 | Sales personnel | sales@oneprompt.test | Sales@12345 |
+| User (customer) | customer@oneprompt.test | Customer@12345 |
 
-The seeder also creates a few more staff accounts and two pending registrations so the approval screen has data.
+The seeder also creates a few more staff accounts and 48 customers (they appear by name on the seeded sales history).
 **Change these passwords before any real deployment.**
 
 ### Password reset email (real sending)
@@ -95,13 +103,17 @@ on XAMPP); `MAIL_MAILER=log` only writes the message to `storage/logs`.
 The data is **synthetic** (realistic parts catalog and prices, weekday/payday/seasonal patterns, growth, random noise), generated
 deterministically by `python ml/generate_datasets.py`. The database is seeded from the same CSV, so dashboard, transactions and datasets agree.
 Do not present it as real business data. Instructors can upload their own CSV (see `ml/README.md`); uploads are validated before saving
-(columns, dates, numbers, at least 1,000 records, duplicates, missing values).
+(columns, dates, numbers, at least 1,000 records, duplicates, missing values). **Refresh Datasets From Orders** exports the orders in
+the database (the seeded history plus every real order) to two live datasets that can then be used to retrain the models.
 
 ```
 Laravel (MlService) --proc_open, JSON on stdin--> python ml/cli.py train | predict --JSON on stdout--> Laravel
                               reads only CSV files and saved models (no database access from Python)
 ```
 
+* **Both models at once:** in Prediction, *Both Models (Combined)* runs Simple Linear Regression and Random Forest Regression together and
+  averages their forecasts (slow-moving and best-selling rankings use the averaged forecast); each model's own result is shown next to the
+  combined one. In Knowledge Analysis, *Both Models (Train Both)* trains and saves both in one step.
 * **Train once, load many times.** Training evaluates on a chronological hold-out (rolling 4-week-ahead forecasts), refits on all data, saves a
   `.joblib` model and records metrics, parameters and a SHA-256 hash in MySQL. Predictions only **load** the saved model.
 * **Simple Linear Regression:** a linear trend on the time index (per product for demand), optional month seasonal index.
@@ -128,8 +140,8 @@ than MAPE. Because the data is synthetic, the two algorithms perform alike; real
 ## 4. Testing
 
 ```bash
-php artisan test                                  # 63 tests (SQLite in memory): auth, roles, inventory, sales, dashboard, security, prediction
-python -m unittest discover -s ml/tests -v        # 8 tests: training, saved-model prediction, integrity and path safety
+php artisan test                                  # 79 tests (SQLite in memory): auth, roles, shop and checkout, orders, inventory, dashboard, security, prediction
+python -m unittest discover -s ml/tests -v        # 10 tests: training, saved-model prediction, both-models blending, integrity and path safety
 npm run build                                     # production frontend build
 ```
 
@@ -140,15 +152,15 @@ training); it is not part of the automated suites.
 
 | Risk | Controls |
 | --- | --- |
-| A01 Broken access control | `role:` middleware on every route group (deny by default) and `active` check on every request, suspended users signed out, admins cannot demote/suspend themselves or remove the last admin, prices/totals computed on the server, refusals logged |
+| A01 Broken access control | `role:` middleware on every route group (deny by default) and `active` check on every request, suspended users signed out, nobody can change their own role or remove the last instructor/admin, customers only see their own orders, prices/totals computed on the server, refusals logged |
 | A02 Cryptographic failures | bcrypt hashing, encrypted sessions, `HttpOnly`/`SameSite=Lax` cookies, `SESSION_SECURE_COOKIE` + HSTS on HTTPS, `APP_DEBUG=false` by default |
 | A03 Injection | Eloquent/query-builder bindings, `LIKE` wildcards escaped, FormRequest/validator rules on every input, Python started with an argument array (no shell), Svelte escapes output |
-| A04 Insecure design | Approval-based registration, sales and stock changes in DB transactions with row locks, idempotency keys against double submit, upload limits |
+| A04 Insecure design | Customers cannot choose a role, checkout runs in a DB transaction with row locks and re-checks stock and prices on the server, idempotency keys against double submit, upload limits |
 | A05 Misconfiguration | Content-Security-Policy, X-Frame-Options, nosniff, Referrer/Permissions-Policy, `no-store` on signed-in pages, friendly error pages, uploads outside `public/` |
 | A06 Vulnerable components | Locked dependencies — run `composer audit`, `npm audit` and `pip list --outdated` before release |
 | A07 Authentication failures | Login throttling per email+IP, generic failure message, session regeneration, POST-only logout with CSRF, strong-password rule everywhere, throttled password reset that never reveals whether an email exists |
 | A08 Integrity failures | Saved models load only if their SHA-256 matches the database; Python reads only inside `storage/app/ml`; uploads are parsed and validated, never executed |
-| A09 Logging & monitoring | `storage/logs/security-*.log`: sign-ins and failures, denials, registrations, approvals, user changes, sales, uploads, model training |
+| A09 Logging & monitoring | `storage/logs/security-*.log`: sign-ins and failures, denials, registrations, user changes, orders, uploads, model training |
 | A10 SSRF | The application never fetches user-supplied URLs |
 
 Not covered by code: HTTPS termination, database privileges, backups, patching and web-server rate limiting. This is a hardened baseline,
@@ -157,14 +169,16 @@ not a certification.
 ## 6. Project structure
 
 ```
-app/Http/Controllers   Auth, Dashboard, UserManagement, Inventory, Sales, Prediction, KnowledgeAnalysis
+app/Http/Controllers   Auth, Dashboard, UserManagement, Inventory, Sales, Shop, Order, Prediction, KnowledgeAnalysis
 app/Http/Middleware    EnsureUserRole, EnsureUserIsActive, SecurityHeaders, HandleInertiaRequests
 app/Services/Ml        MlService (Laravel ↔ Python bridge, proc_open)
 app/Services/Datasets  CSV validation, previews, registry
 app/Mail               PhpMailTransport (MAIL_MAILER=phpmail)
 ml/                    cli.py, sales_model.py, demand_model.py, common.py, datasets/, templates/, tests/
-database/              migrations, factories, seeders (+ seeders/data/products.csv)
-resources/js/Pages     Login, Register, ForgotPassword, ResetPassword, Dashboard, Inventory, Sales, UserManagement, Prediction, KnowledgeAnalysis, Error
+database/              migrations, factories, seeders (+ seeders/data/products.csv, generate_product_images.py)
+public/images          SVG illustrations of every product and category (replace any file with a real photo of the same name)
+public/favicon.svg     App icon (+ PNG sizes and site.webmanifest)
+resources/js/Pages     Login, Register, ForgotPassword, ResetPassword, Shop, MyOrders, Dashboard, Inventory, Sales, UserManagement, Prediction, KnowledgeAnalysis, Error
 resources/js/lib       shadcn-style UI components
 docs/                  Requirement-by-requirement compliance matrix
 ```
@@ -172,6 +186,9 @@ docs/                  Requirement-by-requirement compliance matrix
 ## 7. Current limitations
 
 - The ML data is synthetic; see section 3 for what the metrics do and do not show.
+- Product pictures are generated illustrations, not photographs. Brand photos are copyrighted and could not be downloaded in the build environment; to use real
+  photos, save them as `public/images/products/<SKU>.jpg` and set the product's `image` column (or replace the `.svg` file).
+- Checkout records the payment method only; there is no payment gateway, delivery tracking or order status — an order is a completed sale the moment it is placed.
 - Email delivery needs your own SMTP credentials (see section 2); delivery to the inbox (instead of spam) cannot be guaranteed from a free address.
 - Windows behaviour of the Python launcher (no console window) was designed from the PHP/Windows process rules and the previous Tempus project;
   it was verified on Linux only. If a console window still appears on your machine, tell us whether you use XAMPP/Apache or `php artisan serve` so the launcher can be adjusted.

@@ -18,7 +18,7 @@ class PredictionRequest extends FormRequest
     {
         return [
             'workflow' => ['required', Rule::in(['demand', 'sales', 'slow', 'best'])],
-            'model' => ['required', Rule::in(array_keys(MlModel::ALGORITHMS))],
+            'model' => ['required', Rule::in([...array_keys(MlModel::ALGORITHMS), 'both'])],
             'product_id' => ['required_if:workflow,demand', 'nullable', 'integer', 'exists:products,id'],
             'horizon_days' => ['required_if:workflow,demand,sales', 'nullable', 'integer', 'min:1', 'max:365'],
             'history_months' => ['nullable', 'integer', Rule::in([2, 3, 6, 12])],

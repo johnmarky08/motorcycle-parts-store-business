@@ -16,6 +16,8 @@ from pathlib import Path
 warnings.filterwarnings("ignore")
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import numpy as np  # noqa: E402
+
 import demand_model  # noqa: E402
 import sales_model  # noqa: E402
 from common import BUNDLE_VERSION, MlError, clean, load_bundle, safe_path, save_bundle  # noqa: E402
@@ -49,28 +51,51 @@ def cmd_train(req: dict) -> dict:
     return {"ok": True, "sha256": digest, "size": output.stat().st_size, "split": split, **info}
 
 
-def cmd_predict(req: dict) -> dict:
-    workflow = req.get("workflow")
-    bundle = load_bundle(req["model_path"], req["base_dir"], req.get("sha256"))
+def _predict_one(bundle: dict, workflow: str, p: dict, products: list[dict]) -> dict:
     algorithm = bundle["algorithm"]
-    p = req.get("params", {})
     if workflow == "sales":
         if bundle["task"] != "sales":
             raise MlError("invalid_request", "A sales model is required for sales prediction.")
-        result = sales_model.predict(bundle, algorithm, int(p["horizon_days"]), int(p.get("history_months", 6)))
-    elif bundle["task"] != "demand":
+        return sales_model.predict(bundle, algorithm, int(p["horizon_days"]), int(p.get("history_months", 6)))
+    if bundle["task"] != "demand":
         raise MlError("invalid_request", "A product demand model is required for this workflow.")
-    elif workflow == "demand":
-        result = demand_model.predict_demand(bundle, algorithm, int(p["product_id"]), int(p["horizon_days"]),
-                                             p.get("stock"))
-    elif workflow == "slow":
-        result = demand_model.predict_slow(bundle, algorithm, req.get("products", []), int(p.get("history_months", 6)))
-    elif workflow == "best":
-        result = demand_model.predict_best(bundle, algorithm, req.get("products", []), int(p.get("period_days", 30)))
-    else:
-        raise MlError("invalid_request", "Unsupported workflow.")
-    return {"ok": True, "workflow": workflow, "algorithm": algorithm, "trained_through": bundle.get("last_week"),
-            "result": result}
+    if workflow == "demand":
+        return demand_model.predict_demand(bundle, algorithm, int(p["product_id"]), int(p["horizon_days"]), p.get("stock"))
+    if workflow == "slow":
+        return demand_model.predict_slow(bundle, algorithm, products, int(p.get("history_months", 6)))
+    if workflow == "best":
+        return demand_model.predict_best(bundle, algorithm, products, int(p.get("period_days", 30)))
+    raise MlError("invalid_request", "Unsupported workflow.")
+
+
+def _combine(workflow: str, bundles: list[dict], results: list[dict], p: dict, products: list[dict]) -> dict:
+    """Blend several models into one prediction (the average of their forecasts)."""
+    if workflow == "sales":
+        return sales_model.combine_sales(results)
+    if workflow == "demand":
+        return demand_model.combine_demand(results, p.get("stock"))
+    if workflow == "slow":
+        fc = demand_model.average_forecasts([demand_model.forecast_all(b, b["algorithm"], 5) for b in bundles])
+        return demand_model.predict_slow(bundles[0], bundles[0]["algorithm"], products, int(p.get("history_months", 6)), fc=fc)
+    weeks = int(np.ceil(int(p.get("period_days", 30)) / 7))
+    fc = demand_model.average_forecasts([demand_model.forecast_all(b, b["algorithm"], weeks) for b in bundles])
+    return demand_model.predict_best(bundles[0], bundles[0]["algorithm"], products, int(p.get("period_days", 30)), fc=fc)
+
+
+def cmd_predict(req: dict) -> dict:
+    workflow = req.get("workflow")
+    specs = req.get("models") or [{"model_path": req["model_path"], "sha256": req.get("sha256")}]
+    if not 1 <= len(specs) <= 2:
+        raise MlError("invalid_request", "One or two models are supported.")
+    bundles = [load_bundle(spec["model_path"], req["base_dir"], spec.get("sha256")) for spec in specs]
+    p, products = req.get("params", {}), req.get("products", [])
+    results = [_predict_one(bundle, workflow, p, products) for bundle in bundles]
+
+    response = {"ok": True, "workflow": workflow, "trained_through": bundles[0].get("last_week")}
+    if len(bundles) == 1:
+        return {**response, "algorithm": bundles[0]["algorithm"], "result": results[0]}
+    return {**response, "algorithm": "both", "result": _combine(workflow, bundles, results, p, products),
+            "components": [{"algorithm": b["algorithm"], "result": r} for b, r in zip(bundles, results)]}
 
 
 def main() -> int:

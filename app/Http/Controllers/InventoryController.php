@@ -36,8 +36,7 @@ class InventoryController extends Controller
                     $query->where('stock_quantity', '>', 0)
                         ->whereDoesntHave('saleItems', function ($query) {
                             $query->whereHas('sale', function ($query) {
-                                $query->where('status', 'completed')
-                                    ->where('transaction_date', '>=', now()->subDays(90)->startOfDay());
+                                $query->where('transaction_date', '>=', now()->subDays(90)->startOfDay());
                             });
                         });
                 }
@@ -47,9 +46,7 @@ class InventoryController extends Controller
             ->when($sort === 'stock_asc', fn ($query) => $query->orderBy('stock_quantity'))
             ->when($sort === 'stock_desc', fn ($query) => $query->orderByDesc('stock_quantity'))
             ->when($sort === 'best_selling', function ($query) {
-                $query->withSum(['saleItems as completed_units_sold' => function ($query) {
-                    $query->whereHas('sale', fn ($query) => $query->where('status', 'completed'));
-                }], 'quantity')->orderByDesc('completed_units_sold');
+                $query->withSum('saleItems as completed_units_sold', 'quantity')->orderByDesc('completed_units_sold');
             }, fn ($query) => $query->orderBy('name'))
             ->paginate(20)
             ->withQueryString();

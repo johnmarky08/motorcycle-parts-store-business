@@ -260,8 +260,8 @@ def _percentile_rank(values: dict[int, float]) -> dict[int, float]:
     return {k: (sum(1 for x in ordered if x < v) + 0.5 * sum(1 for x in ordered if x == v)) / n for k, v in values.items()}
 
 
-def predict_slow(bundle, algorithm, products: list[dict], history_months: int, limit: int = 15) -> dict:
-    fc = forecast_all(bundle, algorithm, 5)
+def predict_slow(bundle, algorithm, products: list[dict], history_months: int, limit: int = 15, fc=None) -> dict:
+    fc = fc if fc is not None else forecast_all(bundle, algorithm, 5)
     pred30 = {pid: units_over_days(v, 30) for pid, v in fc.items()}
     rank = _percentile_rank(pred30)
     weeks_back = max(4, int(round(history_months * 4.345)))
@@ -292,9 +292,9 @@ def predict_slow(bundle, algorithm, products: list[dict], history_months: int, l
             "rules": "High: bottom 20% predicted velocity and 90+ days of stock cover. Medium: bottom 40% and 60+ days. Low: bottom 40% or 120+ days of cover."}
 
 
-def predict_best(bundle, algorithm, products: list[dict], period_days: int, limit: int = 10) -> dict:
+def predict_best(bundle, algorithm, products: list[dict], period_days: int, limit: int = 10, fc=None) -> dict:
     weeks = int(np.ceil(period_days / 7))
-    fc = forecast_all(bundle, algorithm, weeks)
+    fc = fc if fc is not None else forecast_all(bundle, algorithm, weeks)
     rows = []
     for p in products:
         pid = int(p["id"])
@@ -310,3 +310,29 @@ def predict_best(bundle, algorithm, products: list[dict], period_days: int, limi
         r["rank"] = i
         r["share_percent"] = round(r["predicted_units"] / total * 100, 1)
     return {"items": rows[:limit], "products_evaluated": len(rows), "period_days": period_days}
+
+
+def average_forecasts(forecasts: list[dict[int, list[float]]]) -> dict[int, list[float]]:
+    """Element-wise mean of several per-product weekly forecasts (products present in every model)."""
+    common = set(forecasts[0])
+    for fc in forecasts[1:]:
+        common &= set(fc)
+    return {pid: [float(np.mean([fc[pid][k] for fc in forecasts])) for k in range(len(forecasts[0][pid]))] for pid in common}
+
+
+def combine_demand(results: list[dict], stock: int | None) -> dict:
+    """Average of several single-model demand results (units, range and weekly forecast)."""
+    first = results[0]
+    mean = lambda key: float(np.mean([r[key] for r in results]))
+    combined = {
+        "product": first["product"],
+        "predicted_units": round(mean("predicted_units"), 1), "lower": round(mean("lower"), 1), "upper": round(mean("upper"), 1),
+        "weekly_average": round(mean("weekly_average"), 2), "recent_weekly": first["recent_weekly"],
+        "forecast_weekly": [{"label": first["forecast_weekly"][k]["label"], "value": round(float(np.mean([r["forecast_weekly"][k]["value"] for r in results])), 2)}
+                            for k in range(len(first["forecast_weekly"]))],
+        "forecast_start": first["forecast_start"],
+    }
+    if stock is not None:
+        combined["current_stock"] = int(stock)
+        combined["suggested_restock"] = int(max(0, np.ceil(combined["upper"] - stock)))
+    return combined

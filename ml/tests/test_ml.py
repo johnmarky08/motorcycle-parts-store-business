@@ -77,6 +77,31 @@ class MlPackageTest(unittest.TestCase):
         slow = self.predict("demand", "simple_linear_regression", "slow", {"history_months": 6}, products)
         self.assertTrue(slow["ok"], slow)
 
+    def predict_both(self, task, workflow, params, products=None):
+        specs = [{"model_path": str(self.base / "models" / f"{task}_{a}.joblib"), "sha256": self.models[(task, a)]["sha256"]}
+                 for a in ("simple_linear_regression", "random_forest_regression")]
+        return run("predict", dict(workflow=workflow, base_dir=str(self.base), models=specs, params=params, products=products or []))
+
+    def test_both_models_sales_is_the_average_of_the_two(self):
+        both = self.predict_both("sales", "sales", {"horizon_days": 30, "history_months": 6})
+        self.assertTrue(both["ok"], both)
+        self.assertEqual(both["algorithm"], "both")
+        totals = [c["result"]["predicted_total"] for c in both["components"]]
+        self.assertEqual(len(totals), 2)
+        self.assertAlmostEqual(both["result"]["predicted_total"], sum(totals) / 2, places=1)
+
+    def test_both_models_demand_and_rankings(self):
+        demand = self.predict_both("demand", "demand", {"product_id": 2, "horizon_days": 30, "stock": 0})
+        self.assertTrue(demand["ok"], demand)
+        units = [c["result"]["predicted_units"] for c in demand["components"]]
+        self.assertAlmostEqual(demand["result"]["predicted_units"], sum(units) / 2, delta=0.11)
+        products = [dict(id=i, sku=f"S{i}", name=f"P{i}", category="C", stock=40 * i, price=100.0) for i in range(1, 30)]
+        best = self.predict_both("demand", "best", {"period_days": 30}, products)
+        slow = self.predict_both("demand", "slow", {"history_months": 6}, products)
+        self.assertTrue(best["ok"] and slow["ok"], (best, slow))
+        ranked = [i["predicted_units"] for i in best["result"]["items"]]
+        self.assertEqual(ranked, sorted(ranked, reverse=True))
+
     def test_tampered_model_is_rejected(self):
         out = self.predict("demand", "simple_linear_regression", "demand", {"product_id": 2, "horizon_days": 7}, sha="0" * 64)
         self.assertFalse(out["ok"])

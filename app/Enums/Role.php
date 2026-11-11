@@ -8,6 +8,7 @@ enum Role: string
     case Instructor = 'instructor';
     case InventoryClerk = 'inventory_clerk';
     case SalesPersonnel = 'sales_personnel';
+    case User = 'user';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum Role: string
             self::Instructor => 'Instructor',
             self::InventoryClerk => 'Inventory Clerk',
             self::SalesPersonnel => 'Sales Personnel',
+            self::User => 'User',
         };
     }
 
@@ -27,16 +29,15 @@ enum Role: string
     public function navigation(): array
     {
         $dashboard = ['label' => 'Dashboard', 'icon' => 'grid', 'href' => '/dashboard'];
+        $users = ['label' => 'User Management', 'icon' => 'users', 'href' => '/user-management'];
+        $prediction = ['label' => 'Prediction', 'icon' => 'chart', 'href' => '/prediction'];
 
         return match ($this) {
-            self::Admin => [
-                $dashboard,
-                ['label' => 'User Management', 'icon' => 'users', 'href' => '/user-management'],
-                ['label' => 'Prediction', 'icon' => 'chart', 'href' => '/prediction'],
-            ],
+            self::Admin => [$dashboard, $users, $prediction],
             self::Instructor => [
                 $dashboard,
-                ['label' => 'Prediction', 'icon' => 'chart', 'href' => '/prediction'],
+                $users,
+                $prediction,
                 ['label' => 'Knowledge Analysis', 'icon' => 'analysis', 'href' => '/knowledge-analysis'],
             ],
             self::InventoryClerk => [
@@ -46,6 +47,10 @@ enum Role: string
             self::SalesPersonnel => [
                 $dashboard,
                 ['label' => 'Sales Management', 'icon' => 'sales', 'href' => '/sales'],
+            ],
+            self::User => [
+                ['label' => 'Shop', 'icon' => 'shop', 'href' => '/shop'],
+                ['label' => 'My Orders', 'icon' => 'orders', 'href' => '/orders'],
             ],
         };
     }

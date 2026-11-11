@@ -27,7 +27,7 @@ class SaleSeeder extends Seeder
             return;
         }
 
-        $cashiers = User::where('role', 'sales_personnel')->where('status', 'active')->pluck('id')->all();
+        $customers = User::where('role', 'user')->orderBy('id')->get(['id', 'name']);
         $handle = fopen($file, 'r');
         $header = fgetcsv($handle);
         $names = DB::table('products')->pluck('name', 'id');
@@ -50,7 +50,7 @@ class SaleSeeder extends Seeder
             $items = [];
         };
 
-        DB::transaction(function () use ($handle, $header, $cashiers, $names, $skus, &$sales, &$items, &$saleId, &$current, $flush) {
+        DB::transaction(function () use ($handle, $header, $customers, $names, $skus, &$sales, &$items, &$saleId, &$current, $flush) {
             while (($line = fgetcsv($handle)) !== false) {
                 $row = array_combine($header, $line);
 
@@ -63,9 +63,9 @@ class SaleSeeder extends Seeder
                     $sales[$saleId] = [
                         'id' => $saleId,
                         'transaction_number' => $current,
-                        'user_id' => $cashiers ? $cashiers[$saleId % count($cashiers)] : null,
+                        'customer_id' => $customers->isNotEmpty() ? $customers[($saleId * 7919) % $customers->count()]->id : null,
+                        'customer_name' => $customers->isNotEmpty() ? $customers[($saleId * 7919) % $customers->count()]->name : null,
                         'payment_method' => $row['payment_method'],
-                        'status' => 'completed',
                         'total_amount' => 0.0,
                         'transaction_date' => $row['transaction_date'],
                         'created_at' => $row['transaction_date'],

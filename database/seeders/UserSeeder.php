@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
@@ -24,8 +24,9 @@ class UserSeeder extends Seeder
             );
         }
 
-        // Extra staff so the user list and the sales history look realistic.
-        $password = config('store.seed.sales_personnel.password');
+        // Extra staff so the user list looks realistic.
+        // Hash each distinct password once (bcrypt is deliberately slow); an already hashed value is stored as is.
+        $password = Hash::make(config('store.seed.sales_personnel.password'));
         $staff = [
             ['Angela Garcia', 'angela.garcia@oneprompt.test', 'sales_personnel', 'active'],
             ['Paolo Mendoza', 'paolo.mendoza@oneprompt.test', 'inventory_clerk', 'active'],
@@ -38,16 +39,15 @@ class UserSeeder extends Seeder
             ]);
         }
 
-        // Registrations waiting for an administrator decision (shown in User Management).
-        $pending = [
-            ['Liza Navarro', 'liza.navarro@oneprompt.test', 'sales_personnel', 'LSPU Motor Pool'],
-            ['Dennis Ocampo', 'dennis.ocampo@oneprompt.test', 'inventory_clerk', 'San Pablo Parts Depot'],
-        ];
-        foreach ($pending as [$name, $email, $requested, $affiliation]) {
+        // Customers: their names appear on the seeded sales history and they can sign in to shop.
+        $first = ['Juan', 'Maria', 'Jose', 'Ana', 'Mark', 'Grace', 'Paolo', 'Kristine', 'Ramon', 'Liza', 'Dennis', 'Carmela', 'Rico', 'Bea', 'Noel', 'Joy'];
+        $last = ['Dela Cruz', 'Santos', 'Reyes', 'Garcia', 'Mendoza', 'Bautista', 'Ocampo', 'Navarro', 'Aquino', 'Castillo', 'Ramos', 'Torres'];
+        $customerPassword = Hash::make(config('store.seed.user.password'));
+        for ($i = 0; $i < 48; $i++) {
+            $name = $first[$i % count($first)].' '.$last[intdiv($i * 5 + $i % 7, 4) % count($last)];
+            $email = strtolower(str_replace(' ', '.', $name)).($i >= 16 ? $i : '').'@customer.oneprompt.test';
             User::updateOrCreate(['email' => $email], [
-                'name' => $name, 'password' => $password, 'role' => 'sales_personnel', 'status' => 'pending',
-                'requested_role' => $requested, 'affiliation' => $affiliation,
-                'registration_status_token' => Str::random(48), 'submitted_at' => now()->subDays(2),
+                'name' => $name, 'password' => $customerPassword, 'role' => 'user', 'status' => 'active', 'email_verified_at' => now(),
             ]);
         }
     }

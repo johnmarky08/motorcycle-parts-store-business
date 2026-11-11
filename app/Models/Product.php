@@ -19,6 +19,7 @@ class Product extends Model
         'name',
         'sku',
         'description',
+        'image',
         'selling_price',
         'stock_quantity',
         'reorder_threshold',
@@ -46,6 +47,16 @@ class Product extends Model
     public function saleItems(): HasMany
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    /** Public URL of the product picture; falls back to the illustration of its category. */
+    public function getImageUrlAttribute(): string
+    {
+        if ($this->image) {
+            return '/'.ltrim($this->image, '/');
+        }
+
+        return '/images/categories/'.\Illuminate\Support\Str::slug($this->category?->name ?? 'general').'.svg';
     }
 
     public function scopeOutOfStock(Builder $query): Builder

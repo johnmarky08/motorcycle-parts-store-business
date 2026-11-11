@@ -1,4 +1,5 @@
 <script>
+    import { fade } from "svelte/transition";
     import { Link, page, router } from "@inertiajs/svelte";
     import { onMount } from "svelte";
     import Button from "../../lib/components/ui/Button.svelte";
@@ -68,8 +69,8 @@
 
 {#if mobileMenuOpen}
     <div class="fixed inset-0 z-30 lg:hidden" role="presentation" onclick={(event) => event.target === event.currentTarget && closeDrawer()}>
-        <div class="absolute inset-0 bg-slate-950/20"></div>
-        <div class="relative flex h-full w-[min(82vw,248px)] flex-col border-r border-slate-200 bg-white shadow-xl" role="dialog" aria-modal="true" aria-label="Mobile navigation">
+        <div transition:fade={{ duration: 160 }} class="absolute inset-0 bg-slate-950/20"></div>
+        <div class="relative flex h-full w-[min(82vw,248px)] flex-col border-r border-slate-200 bg-white shadow-xl" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
             <div class="flex h-[76px] items-center justify-between border-b border-slate-200 px-6">
                 <div class="flex items-center gap-3">
                     <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white">
@@ -77,7 +78,7 @@
                     </div>
                     <div><p class="text-[13px] font-semibold tracking-tight text-slate-950">One Prompt Away</p><p class="mt-0.5 text-[11px] font-medium text-slate-500">Motorcycle Parts Store</p></div>
                 </div>
-                <Button variant="ghost" size="icon" className="text-slate-500" aria-label="Close navigation menu" onclick={closeDrawer}>
+                <Button variant="ghost" size="icon" className="text-slate-500" aria-label="Close Navigation Menu" onclick={closeDrawer}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-5 w-5" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
                 </Button>
             </div>
@@ -110,7 +111,7 @@
                 <DropdownMenu.Label class="px-2 py-1.5 text-xs font-medium text-slate-500">Account</DropdownMenu.Label>
                 <DropdownMenu.Item onclick={logout} class="flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50 hover:text-rose-800">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" class="h-4 w-4" aria-hidden="true"><path d="M9 5H5v14h4M14 8l4 4-4 4M18 12H9" /></svg>
-                    <span>Sign out</span>
+                    <span>Sign Out</span>
                 </DropdownMenu.Item>
             </DropdownMenu.Content>
         </DropdownMenu.Root>
@@ -126,6 +127,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-[17px] w-[17px]" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5v-9Z" /><path d="m4 7.5 8 4.5 8-4.5M12 12v9" /></svg>
     {:else if item.icon === "sales"}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-[17px] w-[17px]" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h5M8 16h6" /></svg>
+    {:else if item.icon === "shop"}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-[17px] w-[17px]" aria-hidden="true"><path d="M5 8h14l-1 12H6L5 8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" /></svg>
+    {:else if item.icon === "orders"}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-[17px] w-[17px]" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" /><path d="M9 8h6M9 12h6" /></svg>
     {:else if item.icon === "analysis"}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-[17px] w-[17px]" aria-hidden="true"><path d="M4 19V5m0 14h16" /><path d="m7 15 3-4 3 2 5-7" /><circle cx="7" cy="15" r="1" /><circle cx="10" cy="11" r="1" /><circle cx="13" cy="13" r="1" /><circle cx="18" cy="6" r="1" /></svg>
     {:else}

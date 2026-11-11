@@ -12,7 +12,7 @@
     $: average = chartData.length ? chartData.reduce((sum, point) => sum + point.y, 0) / chartData.length : 0;
     $: chartDataWithAverage = chartData.map((point) => ({ ...point, average }));
     $: chartConfig = {
-        data: { label: "Completed sales", color: "var(--color-primary)" },
+        data: { label: "Sales", color: "var(--color-primary)" },
     };
 </script>
 
@@ -22,7 +22,7 @@
             data={chartDataWithAverage}
             x="x"
             xScale={scaleUtc()}
-            padding={{ left: 48, bottom: 24 }}
+            padding={{ left: 56, bottom: 44, right: 12 }}
             series={[
                 { key: "y", label: chartConfig.data.label, color: chartConfig.data.color },
                 { key: "average", label: "Average", color: "var(--muted-foreground)" },
@@ -30,7 +30,7 @@
             axis
             props={{
                 area: { curve: curveCatmullRom, "fill-opacity": 0.4, line: { class: "stroke-2" }, motion: "tween" },
-                xAxis: { format: (value) => formatDate(value as Date) },
+                xAxis: { format: (value) => formatDate(value as Date), tickLabelProps: { rotate: -40, textAnchor: "end", verticalAnchor: "middle", dy: 6 } },
                 yAxis: { format: (value) => formatValue(Number(value)) },
                 grid: { style: "stroke-dasharray: 2", class: "stroke-1" },
             }}
@@ -65,5 +65,5 @@
         </AreaChart>
     </Chart.Container>
 {:else}
-    <div class="flex h-64 items-center justify-center text-sm text-muted-foreground">No completed sales in this period.</div>
+    <div class="flex h-64 items-center justify-center text-sm text-muted-foreground">No sales in this period.</div>
 {/if}

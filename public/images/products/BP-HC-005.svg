@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img" aria-label="Honda Click 125">
+<defs><linearGradient id="bgHondaClick12" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fee2e2"/><stop offset="1" stop-color="#fecaca"/></linearGradient></defs>
+<rect width="600" height="450" fill="url(#bgHondaClick12)"/>
+<circle cx="300" cy="190" r="150" fill="#ffffff" opacity=".55"/>
+<ellipse cx="300" cy="332" rx="130" ry="14" fill="#0f172a" opacity=".12"/>
+<path d="M170 215 Q170 150 230 135 L370 135 Q430 150 430 215 Z" fill="#475569"/>
+<path d="M185 215 Q185 165 235 150 L365 150 Q415 165 415 215 Z" fill="#f22929"/>
+<g stroke="#f8fafc" stroke-width="5" stroke-linecap="round" opacity=".55"><path d="M240 170v35M280 165v40M320 165v40M360 170v35"/></g>
+<rect x="165" y="215" width="270" height="22" rx="8" fill="#0f172a"/>
+<rect x="40" y="368" width="520" height="54" rx="14" fill="#ffffff" opacity=".92"/>
+<text x="300" y="393" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Honda Click 125</text>
+<text x="300" y="413" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#64748b">Brake System · BP-HC-005</text>
+</svg>

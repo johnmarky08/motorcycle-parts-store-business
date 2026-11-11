@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockMovement;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -18,14 +19,19 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request): Response|RedirectResponse
     {
+        // Customers have no dashboard: their home is the shop.
+        if ($request->user()->role === 'user') {
+            return redirect('/shop');
+        }
+
         $range = $request->integer('range', 30);
         $range = in_array($range, [30, 365], true) ? $range : 30;
         $role = $request->user()->role;
-        $latestSale = Sale::query()->where('status', 'completed')->max('transaction_date');
+        $latestSale = Sale::query()->max('transaction_date');
         $anchor = $latestSale ? Carbon::parse($latestSale) : now();
-        $completedSales = Sale::query()->where('status', 'completed');
+        $completedSales = Sale::query();
         $totalProducts = Product::count();
         $lowStock = Product::whereColumn('stock_quantity', '<=', 'reorder_threshold')
             ->where('stock_quantity', '>', 0)
@@ -52,7 +58,6 @@ class DashboardController extends Controller
             ->selectRaw('SUM(sale_items.quantity) as units_sold')
             ->selectRaw('SUM(sale_items.line_total) as revenue')
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-            ->where('sales.status', 'completed')
             ->groupBy('sale_items.product_id', 'sale_items.product_name', 'sale_items.sku')
             ->orderByDesc('units_sold')
             ->limit(5)
@@ -69,10 +74,7 @@ class DashboardController extends Controller
             ->select('products.id', 'products.name', 'products.sku', 'products.stock_quantity')
             ->selectRaw('MAX(sales.transaction_date) as last_sale_at')
             ->leftJoin('sale_items', 'sale_items.product_id', '=', 'products.id')
-            ->leftJoin('sales', function ($join) {
-                $join->on('sales.id', '=', 'sale_items.sale_id')
-                    ->where('sales.status', 'completed');
-            })
+            ->leftJoin('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->where('products.stock_quantity', '>', 0)
             ->groupBy('products.id', 'products.name', 'products.sku', 'products.stock_quantity')
             ->havingRaw('MAX(sales.transaction_date) IS NULL OR MAX(sales.transaction_date) < ?', [$slowMovingSince])
@@ -106,10 +108,10 @@ class DashboardController extends Controller
                 'period_transactions' => $periodTransactions,
                 'average_sale' => $periodTransactions > 0 ? round($periodSales / $periodTransactions, 2) : 0,
                 'recent_sales' => $role === Role::SalesPersonnel->value
-                    ? Sale::query()->where('status', 'completed')->latest('transaction_date')->latest('id')->limit(6)
-                        ->get(['id', 'transaction_number', 'total_amount', 'payment_method', 'transaction_date'])
+                    ? Sale::query()->latest('transaction_date')->latest('id')->limit(6)
+                        ->get(['id', 'transaction_number', 'customer_name', 'total_amount', 'payment_method', 'transaction_date'])
                         ->map(fn (Sale $sale) => [
-                            'id' => $sale->id, 'transaction_number' => $sale->transaction_number, 'total' => (float) $sale->total_amount,
+                            'id' => $sale->id, 'transaction_number' => $sale->transaction_number, 'customer_name' => $sale->customer_name, 'total' => (float) $sale->total_amount,
                             'payment_method' => $sale->payment_method, 'date' => $sale->transaction_date->toIso8601String(),
                         ])->values() : [],
                 'recent_movements' => $role === Role::InventoryClerk->value

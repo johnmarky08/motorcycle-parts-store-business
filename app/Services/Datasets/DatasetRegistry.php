@@ -73,6 +73,22 @@ class DatasetRegistry
         return $dataset;
     }
 
+    /** Registers (or refreshes) a CSV that the application generated itself, for example from orders. */
+    public function registerGenerated(string $absolutePath, string $relativePath, string $type, string $name, string $description, ?User $user): Dataset
+    {
+        $stats = $this->inspector->inspect($absolutePath, $type); // throws DatasetException when it is not usable
+
+        return Dataset::updateOrCreate(['slug' => Str::slug($name)], [
+            'name' => $name,
+            'description' => $description,
+            'type' => $type,
+            'file_path' => $relativePath,
+            'original_filename' => basename($relativePath),
+            'is_system' => false,
+            'uploaded_by' => $user?->id,
+        ] + $stats);
+    }
+
     public function delete(Dataset $dataset): void
     {
         if ($dataset->is_system) {

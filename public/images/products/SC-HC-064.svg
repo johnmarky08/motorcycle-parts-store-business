@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img" aria-label="Honda Click Seat">
+<defs><linearGradient id="bgHondaClickSe" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3e8ff"/><stop offset="1" stop-color="#e9d5ff"/></linearGradient></defs>
+<rect width="600" height="450" fill="url(#bgHondaClickSe)"/>
+<circle cx="300" cy="190" r="150" fill="#ffffff" opacity=".55"/>
+<ellipse cx="300" cy="332" rx="130" ry="14" fill="#0f172a" opacity=".12"/>
+<path d="M150 210c10-70 90-96 150-80 40-14 110 0 150 70 4 16-8 30-24 30H178c-16 0-30-6-28-20z" fill="#6b1caf"/><rect x="236" y="240" width="130" height="30" rx="8" fill="#0f172a"/>
+<rect x="40" y="368" width="520" height="54" rx="14" fill="#ffffff" opacity=".92"/>
+<text x="300" y="393" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Honda Click Seat</text>
+<text x="300" y="413" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#64748b">Accessories · SC-HC-064</text>
+</svg>

@@ -30,7 +30,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
-            'role' => fake()->randomElement(['inventory_clerk', 'sales_personnel']),
+            'role' => 'user',
             'status' => 'active',
         ];
     }
@@ -65,16 +65,9 @@ class UserFactory extends Factory
         return $this->state(fn () => ['status' => 'suspended']);
     }
 
-    /** A registration waiting for administrator approval. */
-    public function pending(string $requestedRole = 'sales_personnel'): static
+    public function customer(): static
     {
-        return $this->state(fn () => [
-            'status' => 'pending',
-            'requested_role' => $requestedRole,
-            'affiliation' => fake()->company(),
-            'registration_status_token' => Str::random(48),
-            'submitted_at' => now(),
-        ]);
+        return $this->role('user');
     }
 
     /**

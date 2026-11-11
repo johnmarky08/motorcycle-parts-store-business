@@ -4,12 +4,14 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\KnowledgeAnalysisController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PredictionController;
 use App\Http\Controllers\SalesController;
+use App\Http\Controllers\ShopController;
 use App\Http\Controllers\UserManagementController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect(auth()->check() ? '/dashboard' : '/login'));
+Route::get('/', fn () => redirect(auth()->check() ? auth()->user()->homePath() : '/login'));
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -27,15 +29,13 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 Route::middleware(['auth', 'active'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
-    // Admin: users and registration approvals
-    Route::middleware('role:admin')->group(function () {
+    // Instructor and admin: user management (any role can be assigned)
+    Route::middleware('role:instructor,admin')->group(function () {
         Route::get('/user-management', [UserManagementController::class, 'index']);
         Route::post('/user-management', [UserManagementController::class, 'store']);
         Route::put('/user-management/{user}', [UserManagementController::class, 'update']);
         Route::delete('/user-management/{user}', [UserManagementController::class, 'destroy']);
         Route::patch('/user-management/{user}/status', [UserManagementController::class, 'toggleStatus']);
-        Route::patch('/user-management/{user}/approve', [UserManagementController::class, 'approve']);
-        Route::patch('/user-management/{user}/reject', [UserManagementController::class, 'reject']);
     });
 
     // Admin + instructor: prediction inputs and outputs
@@ -50,6 +50,7 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::post('/train', [KnowledgeAnalysisController::class, 'train'])->middleware('throttle:ml-train');
         Route::post('/datasets', [KnowledgeAnalysisController::class, 'upload'])->middleware('throttle:upload');
         Route::delete('/datasets/{dataset}', [KnowledgeAnalysisController::class, 'destroyDataset']);
+        Route::post('/datasets/refresh', [KnowledgeAnalysisController::class, 'refreshFromOrders'])->middleware('throttle:upload');
         Route::post('/models/{mlModel}/activate', [KnowledgeAnalysisController::class, 'activate']);
     });
 
@@ -64,10 +65,19 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('/inventory/{product}/movements', [InventoryController::class, 'movements']);
     });
 
-    // Sales personnel
+    // Sales personnel: read-only transaction history
     Route::middleware('role:sales_personnel')->group(function () {
         Route::get('/sales', [SalesController::class, 'index']);
-        Route::get('/sales/{sale}', [SalesController::class, 'show']);
-        Route::post('/sales', [SalesController::class, 'store']);
+    });
+
+    // Customers: shop, cart, checkout and their own orders
+    Route::middleware('role:user')->group(function () {
+        Route::get('/shop', [ShopController::class, 'index']);
+        Route::post('/cart', [ShopController::class, 'addToCart']);
+        Route::patch('/cart/{product}', [ShopController::class, 'updateCart']);
+        Route::delete('/cart/{product}', [ShopController::class, 'removeFromCart']);
+        Route::delete('/cart', [ShopController::class, 'clearCart']);
+        Route::post('/checkout', [ShopController::class, 'checkout'])->middleware('throttle:20,1');
+        Route::get('/orders', [OrderController::class, 'index']);
     });
 });

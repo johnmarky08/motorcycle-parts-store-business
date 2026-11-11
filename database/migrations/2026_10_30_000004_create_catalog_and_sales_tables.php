@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('sku')->unique();
             $table->text('description')->nullable();
+            $table->string('image')->nullable();
             $table->decimal('selling_price', 12, 2);
             $table->unsignedInteger('stock_quantity')->default(0);
             $table->unsignedInteger('reorder_threshold')->default(10);
@@ -41,14 +42,14 @@ return new class extends Migration
 
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            // The customer who placed the order; the name is kept so history survives account deletion.
+            $table->foreignId('customer_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('customer_name')->nullable();
             $table->string('transaction_number')->unique();
-            $table->dateTime('transaction_date');
-            $table->enum('status', ['completed', 'voided'])->default('completed');
+            $table->dateTime('transaction_date')->index();
             $table->string('payment_method');
             $table->decimal('total_amount', 12, 2);
             $table->timestamps();
-            $table->index(['transaction_date', 'status']);
         });
 
         Schema::create('sale_items', function (Blueprint $table) {

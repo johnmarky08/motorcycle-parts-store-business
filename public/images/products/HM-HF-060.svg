@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img" aria-label="Half-Face Motorcycle Helmet">
+<defs><linearGradient id="bgHalfFaceMoto" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3e8ff"/><stop offset="1" stop-color="#e9d5ff"/></linearGradient></defs>
+<rect width="600" height="450" fill="url(#bgHalfFaceMoto)"/>
+<circle cx="300" cy="190" r="150" fill="#ffffff" opacity=".55"/>
+<ellipse cx="300" cy="332" rx="130" ry="14" fill="#0f172a" opacity=".12"/>
+<path d="M180 220a120 120 0 0 1 240 0v30a20 20 0 0 1-20 20H200a20 20 0 0 1-20-20z" fill="#9728f7"/><path d="M180 218h240" stroke="#0f172a" stroke-width="8"/>
+<path d="M205 200h190v28H205z" fill="#0f172a" opacity=".85"/><path d="M215 150a100 100 0 0 1 90-54" stroke="#f8fafc" stroke-width="10" fill="none" stroke-linecap="round" opacity=".55"/>
+<rect x="40" y="368" width="520" height="54" rx="14" fill="#ffffff" opacity=".92"/>
+<text x="300" y="393" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="22" font-weight="700" fill="#0f172a">Half-Face Motorcycle Helmet</text>
+<text x="300" y="413" text-anchor="middle" font-family="Inter,Arial,sans-serif" font-size="14" fill="#64748b">Accessories · HM-HF-060</text>
+</svg>
