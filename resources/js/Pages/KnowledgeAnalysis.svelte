@@ -234,7 +234,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
         <AppHeader title="Knowledge Analysis" bind:mobileMenuOpen />
         <main class="min-h-0 flex-1 overflow-y-auto">
-            <div class="mx-auto max-w-[1180px] px-4 py-6 sm:px-8 sm:py-7">
+            <div class="mx-auto max-w-295 px-4 py-6 sm:px-8 sm:py-7">
                 <div
                     class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
                 >
@@ -565,7 +565,7 @@
                         </div>
                         {#if preview && preview.rows.length}
                             <div class="overflow-x-auto">
-                                <table class="w-full min-w-[820px] text-left">
+                                <table class="w-full min-w-205 text-left">
                                     <thead
                                         ><tr
                                             class="border-b border-slate-100 text-[10px] font-semibold uppercase tracking-wider text-slate-400"
@@ -791,7 +791,7 @@
                         </div>
                     {:else}
                         <div class="overflow-x-auto">
-                            <table class="w-full min-w-[980px] text-left">
+                            <table class="w-full min-w-245 text-left">
                                 <thead
                                     ><tr
                                         class="border-b border-slate-100 text-[10px] font-semibold uppercase tracking-wider text-slate-400"
@@ -1003,7 +1003,7 @@
         <dialog
             open
             transition:pop|global
-            class="static m-0 w-full max-w-lg rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-xl"
+            class="static m-0 w-full max-w-lg rounded-xl border border-slate-200 bg-white p-5 shadow-xl"
             aria-labelledby="upload-title"
         >
             <div class="flex items-start justify-between">

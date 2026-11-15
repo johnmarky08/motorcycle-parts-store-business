@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-@import 'tailwindcss';
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -8,8 +8,9 @@
 @source '../**/*.svelte';
 
 @theme {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans:
+        "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+        "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --color-background: #ffffff;
     --color-foreground: #0f172a;
     --color-card: #ffffff;
@@ -53,7 +54,6 @@ dialog[open] {
     transform: none;
 }
 
-
 /* ------------------------------------------------------------------ */
 /* Cursors: Tailwind v4 resets buttons to the default arrow.           */
 /* ------------------------------------------------------------------ */
@@ -84,7 +84,9 @@ dialog[open] {
         cursor: not-allowed;
     }
 
-    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="date"]):not([type="submit"]):not([type="button"]):not(:disabled),
+    input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not(
+            [type="date"]
+        ):not([type="submit"]):not([type="button"]):not(:disabled),
     textarea:not(:disabled) {
         cursor: text;
     }
@@ -104,7 +106,11 @@ dialog[open] {
 }
 
 #nprogress .peg {
-    box-shadow: 0 0 10px #2563eb, 0 0 5px #2563eb;
+    box-shadow:
+        0 0 10px #2563eb,
+        0 0 5px #2563eb;
 }
 
-#nprogress .spinner { display: none; }
+#nprogress .spinner {
+    display: none;
+}

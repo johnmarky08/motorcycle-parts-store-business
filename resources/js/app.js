@@ -4,7 +4,12 @@ import { mount } from "svelte";
 
 createInertiaApp({
     // Page-transition loading bar (no spinner): same blue as the app's primary accent (blue-600).
-    progress: { color: "#2563eb", delay: 80, includeCSS: true, showSpinner: false },
+    progress: {
+        color: "#2563eb",
+        delay: 80,
+        includeCSS: true,
+        showSpinner: false,
+    },
     resolve: (name) => {
         const pages = import.meta.glob("./Pages/**/*.svelte", { eager: true });
         return pages[`./Pages/${name}.svelte`];

@@ -8,6 +8,7 @@ export function pop(node, { duration = 180, start = 0.96 } = {}) {
     return {
         duration,
         easing: cubicOut,
-        css: (t, u) => `transform: ${transform} scale(${start + (1 - start) * t}) translateY(${u * 8}px); opacity: ${t}`,
+        css: (t, u) =>
+            `transform: ${transform} scale(${start + (1 - start) * t}) translateY(${u * 8}px); opacity: ${t}`,
     };
 }
