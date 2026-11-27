@@ -11,9 +11,7 @@ use Illuminate\Support\Str;
 
 class DatasetRegistry
 {
-    public function __construct(private DatasetInspector $inspector)
-    {
-    }
+    public function __construct(private DatasetInspector $inspector) {}
 
     private function dir(): string
     {

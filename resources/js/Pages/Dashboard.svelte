@@ -4,6 +4,7 @@
     import AppSidebar from "../Components/Layout/AppSidebar.svelte";
     import StatCard from "../Components/Shared/StatCard.svelte";
     import TracktorSalesChart from "../Components/Shared/TracktorSalesChart.svelte";
+    import { movementLabel, roleLabel } from "../lib/labels.js";
 
     export let auth = { user: null };
     export let dashboard = {
@@ -76,6 +77,18 @@
         },
     ];
     $: sections = dashboard.sections ?? {};
+    // Exact days covered by the period cards, e.g. "Oct 29 – Nov 27, 2026".
+    $: periodLabel = dateRange(dashboard.period_start, dashboard.data_as_of);
+
+    function dateRange(start, end) {
+        if (!start || !end) return "Selected Period";
+        const from = new Date(`${start}T00:00:00`);
+        const to = new Date(`${end}T00:00:00`);
+        const sameYear = from.getFullYear() === to.getFullYear();
+        const fromText = from.toLocaleDateString("en-PH", { month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }) });
+        const toText = to.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
+        return `${fromText} – ${toText}`;
+    }
     $: stats =
         auth?.user?.role === "sales_personnel"
             ? [
@@ -89,14 +102,14 @@
                   {
                       label: `Sales (${dashboard.range} days)`,
                       value: formatPrice(dashboard.period_sales),
-                      change: "Selected Period",
+                      change: periodLabel,
                       trend: "neutral",
                       icon: "sales",
                   },
                   {
-                      label: "Transactions",
+                      label: `Transactions (${dashboard.range} days)`,
                       value: dashboard.period_transactions.toLocaleString(),
-                      change: "Selected Period",
+                      change: periodLabel,
                       trend: "neutral",
                       icon: "transactions",
                   },
@@ -170,13 +183,6 @@
                     },
                 ];
 
-    const movementLabels = {
-        received: "Stock received",
-        reduction: "Stock reduced",
-        sale: "Sale",
-        correction: "Correction",
-    };
-
     function formatDateTime(value) {
         return new Date(value).toLocaleString("en-PH", {
             dateStyle: "medium",
@@ -199,8 +205,26 @@
             : date.toLocaleDateString("en-PH", {
                   month: "short",
                   day: "numeric",
-                  year: "2-digit",
+                  year: "numeric",
               });
+    }
+
+    // Short x-axis labels: the day for the 30-day view, the month and year for the 365-day view.
+    // Reactive so the chart redraws its axis when the range changes.
+    $: formatAxisDate = ((yearly) => (value) => {
+        const date = value instanceof Date ? value : new Date(`${String(value).slice(0, 10)}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return "";
+        return yearly
+            ? date.toLocaleDateString("en-PH", { month: "short", year: "numeric" })
+            : date.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+    })(dashboard.range === 365);
+
+    // "Good morning / afternoon / evening" from the viewer's own clock.
+    function greeting() {
+        const hour = new Date().getHours();
+        if (hour < 12) return "Good morning";
+        if (hour < 18) return "Good afternoon";
+        return "Good evening";
     }
 
     // Only offer links to pages this role may open (otherwise the server answers 403).
@@ -238,24 +262,21 @@
     <div class="flex min-w-0 flex-1 flex-col">
         <AppHeader bind:mobileMenuOpen />
         <main class="min-h-0 flex-1 overflow-y-auto">
-            <div class="mx-auto max-w-370 px-4 py-6 sm:px-8 sm:py-7">
+            <div class="w-full px-4 py-6 sm:px-8 sm:py-7">
                 <div
                     class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
                 >
                     <div>
                         <p class="mb-2 text-xs font-medium text-slate-500">
-                            Store workspace · {auth?.user?.role ?? "User"}
+                            Store Workspace · {auth?.user?.role_label ?? roleLabel(auth?.user?.role)}
                         </p>
                         <h1
                             class="text-2xl font-bold tracking-tight text-slate-950"
                         >
-                            Good morning, {auth?.user?.name ?? "there"}
+                            {greeting()}, {auth?.user?.name ?? "there"}
                         </h1>
                         <p class="mt-1 text-sm text-slate-500">
-                            Here’s an overview of your workspace.{#if dashboard.data_as_of && sections.sales}
-                                Sales data as of {formatDate(
-                                    dashboard.data_as_of,
-                                )}.{/if}
+                            Here’s an overview of your workspace.{#if dashboard.data_as_of && sections.sales}{" "}Sales data as of {formatDate(dashboard.data_as_of)}.{/if}
                         </p>
                     </div>
                     {#if auth?.user?.role === "inventory_clerk"}
@@ -292,7 +313,7 @@
                         <article
                             class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
                         >
-                            <div class="flex items-start justify-between">
+                            <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h2
                                         class="text-sm font-semibold text-slate-900"
@@ -343,6 +364,7 @@
                                     rows={dashboard.sales_trend}
                                     formatValue={formatPrice}
                                     {formatDate}
+                                    {formatAxisDate}
                                 />
                                 <div
                                     class="mt-5 flex items-center gap-5 text-[11px] text-slate-500"
@@ -377,7 +399,7 @@
                         <article
                             class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
                         >
-                            <div class="flex items-start justify-between">
+                            <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h2
                                         class="text-sm font-semibold text-slate-900"
@@ -421,10 +443,9 @@
                                             <p
                                                 class="mt-0.5 truncate text-[10px] text-slate-400"
                                             >
-                                                {movementLabels[
-                                                    movement.type
-                                                ] ??
-                                                    movement.type}{movement.user
+                                                {movementLabel(
+                                                    movement.type,
+                                                )}{movement.user
                                                     ? ` · ${movement.user}`
                                                     : ""} · {movement.note}
                                             </p>
@@ -445,7 +466,7 @@
                         <article
                             class="rounded-lg border border-slate-200 bg-white p-6"
                         >
-                            <div class="flex items-start justify-between">
+                            <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h2
                                         class="text-sm font-semibold text-slate-900"
@@ -503,7 +524,7 @@
                         <article
                             class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
                         >
-                            <div class="flex items-start justify-between">
+                            <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h2
                                         class="text-sm font-semibold text-slate-900"
@@ -695,7 +716,7 @@
                         <article
                             class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
                         >
-                            <div class="flex items-start justify-between">
+                            <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h2
                                         class="text-sm font-semibold text-slate-900"

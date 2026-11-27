@@ -19,6 +19,7 @@
 /storage/*.key
 /storage/pail
 /vendor
+/.pytest_cache
 __pycache__/
 *.py[cod]
 Homestead.json

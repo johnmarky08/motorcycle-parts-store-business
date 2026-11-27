@@ -3,10 +3,12 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\Role;
+use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use App\Enums\Role;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
@@ -22,8 +24,6 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
-        'role',
-        'status',
         'last_login_at',
         'password',
     ];
@@ -52,13 +52,19 @@ class User extends Authenticatable
         ];
     }
 
+    /** Sends the password reset link in the store's own email design. */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
     /** Where a signed-in user starts: customers land in the shop, staff on the dashboard. */
     public function homePath(): string
     {
         return $this->role === 'user' ? '/shop' : '/dashboard';
     }
 
-    public function cartItems(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function cartItems(): HasMany
     {
         return $this->hasMany(CartItem::class);
     }
@@ -68,7 +74,6 @@ class User extends Authenticatable
         return $this->status === 'active';
     }
 
-    /** @param  Role|string  ...$roles */
     public function hasRole(Role|string ...$roles): bool
     {
         foreach ($roles as $role) {

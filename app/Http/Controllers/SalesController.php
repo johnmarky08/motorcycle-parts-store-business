@@ -32,7 +32,7 @@ class SalesController extends Controller
 
         $totals = (clone $query)->selectRaw('COUNT(*) as transactions, COALESCE(SUM(total_amount), 0) as total')->first();
 
-        $transactions = $query->with('items')->latest('transaction_date')->latest('id')->paginate(15)->withQueryString()
+        $transactions = $query->with('items.product.category:id,name')->latest('transaction_date')->latest('id')->paginate(15)->withQueryString()
             ->through(fn (Sale $sale) => [
                 'id' => $sale->id,
                 'transaction_number' => $sale->transaction_number,
@@ -41,7 +41,7 @@ class SalesController extends Controller
                 'payment_method' => $sale->payment_method,
                 'total_amount' => (float) $sale->total_amount,
                 'items' => $sale->items->map(fn ($item) => [
-                    'product_name' => $item->product_name, 'sku' => $item->sku, 'quantity' => $item->quantity,
+                    'product_name' => $item->product_name, 'sku' => $item->sku, 'image' => $item->product?->image_url ?? '/images/categories/general.svg', 'quantity' => $item->quantity,
                     'unit_price' => (float) $item->unit_price, 'line_total' => (float) $item->line_total,
                 ])->values(),
             ]);

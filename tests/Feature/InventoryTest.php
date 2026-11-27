@@ -88,7 +88,7 @@ class InventoryTest extends TestCase
             'movement_type' => 'reduction',
             'quantity' => 99,
             'note' => 'Invalid reduction',
-        ])->assertStatus(422);
+        ])->assertSessionHasErrors('quantity');
         $this->assertDatabaseHas('products', ['id' => $product->id, 'stock_quantity' => 8]);
 
         $this->actingAs($admin)->get("/inventory/{$product->id}/movements")
@@ -106,8 +106,40 @@ class InventoryTest extends TestCase
         $sale->items()->create(['product_id' => $product->id, 'product_name' => 'Brake Pad', 'sku' => 'BRAKE', 'quantity' => 1, 'unit_price' => 100, 'line_total' => 100]);
 
         $this->actingAs($sales)->get('/inventory')->assertForbidden();
-        $this->actingAs($clerk)->delete("/inventory/{$product->id}")->assertStatus(422);
+        $this->actingAs($clerk)->delete("/inventory/{$product->id}")->assertSessionHasErrors('message');
         $this->assertDatabaseHas('products', ['id' => $product->id]);
+    }
+
+    public function test_a_product_created_with_opening_stock_can_be_deleted_when_it_never_sold(): void
+    {
+        $clerk = User::factory()->create(['role' => 'inventory_clerk', 'status' => 'active']);
+        $category = $this->category();
+
+        $this->actingAs($clerk)->post('/inventory', [
+            'category_id' => $category->id, 'name' => 'Mirror', 'sku' => 'MIR-1', 'selling_price' => 250, 'stock_quantity' => 8, 'reorder_threshold' => 2,
+        ])->assertSessionHasNoErrors();
+        $product = Product::where('sku', 'MIR-1')->firstOrFail();
+        $this->assertDatabaseHas('stock_movements', ['product_id' => $product->id]);
+
+        $this->actingAs($clerk)->delete("/inventory/{$product->id}")->assertSessionHas('status', 'Product deleted successfully.');
+        $this->assertDatabaseMissing('products', ['id' => $product->id]);
+    }
+
+    public function test_stock_cannot_go_below_zero_and_summary_counts_every_page(): void
+    {
+        $clerk = User::factory()->create(['role' => 'inventory_clerk', 'status' => 'active']);
+        $category = $this->category();
+        foreach (range(1, 25) as $i) {
+            Product::create(['category_id' => $category->id, 'name' => "Part {$i}", 'sku' => "P-{$i}", 'selling_price' => 10, 'stock_quantity' => $i <= 22 ? 1 : 0, 'reorder_threshold' => 3]);
+        }
+        $product = Product::where('sku', 'P-1')->firstOrFail();
+
+        $this->actingAs($clerk)->post("/inventory/{$product->id}/stock", ['movement_type' => 'reduction', 'quantity' => 5, 'note' => 'Damaged'])
+            ->assertSessionHasErrors('quantity');
+        $this->assertSame(1, $product->fresh()->stock_quantity);
+
+        $this->actingAs($clerk)->get('/inventory')->assertInertia(fn ($page) => $page
+            ->where('summary.total', 25)->where('summary.low_stock', 22)->where('summary.out_of_stock', 3));
     }
 
     public function test_invalid_product_values_are_rejected(): void

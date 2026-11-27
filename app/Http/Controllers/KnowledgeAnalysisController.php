@@ -49,7 +49,7 @@ class KnowledgeAnalysisController extends Controller
                 'rmse' => 'Root Mean Squared Error: like MAE but large mistakes weigh more. Always at least as big as MAE; a big gap means a few large misses.',
                 'mape' => 'Mean Absolute Percentage Error: the average mistake as a percent of the actual value. Only periods with a non-zero actual value are counted.',
                 'wape' => 'Weighted Absolute Percentage Error: total absolute error divided by total actual value. More stable than MAPE when many actual values are small.',
-                'r2' => 'R²: share of the variation explained by the model (1 is perfect, 0 is no better than predicting the average, negative is worse than the average).',
+                'r2' => 'R²: share of the variation explained by the model (1 is perfect, 0 is no better than predicting the average, negative is worse than the average). On a short hold-out where the values barely move apart from random noise, R² stays near 0 even when the percentage errors (MAPE/WAPE) are small, so read it together with them.',
             ],
         ]);
     }

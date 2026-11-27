@@ -2,11 +2,13 @@
     import * as Chart from "../../lib/components/ui/chart/index.js";
     import { Area, AreaChart, LinearGradient } from "layerchart";
     import { scaleUtc } from "d3-scale";
-    import { curveCatmullRom } from "d3-shape";
+    import { curveMonotoneX } from "d3-shape";
 
     export let rows: Array<{ date: string; total: number }> = [];
     export let formatValue: (value: number) => string = (value) => value.toLocaleString();
     export let formatDate: (value: Date) => string = (value) => value.toLocaleDateString();
+    // Shorter labels for the x-axis (the tooltip keeps the full date).
+    export let formatAxisDate: (value: Date) => string = formatDate;
 
     $: chartData = rows.map((row) => ({ x: new Date(`${row.date}T00:00:00`), y: Number(row.total) }));
     $: average = chartData.length ? chartData.reduce((sum, point) => sum + point.y, 0) / chartData.length : 0;
@@ -29,8 +31,8 @@
             ]}
             axis
             props={{
-                area: { curve: curveCatmullRom, "fill-opacity": 0.4, line: { class: "stroke-2" }, motion: "tween" },
-                xAxis: { format: (value) => formatDate(value as Date), tickLabelProps: { rotate: -40, textAnchor: "end", verticalAnchor: "middle", dy: 6 } },
+                area: { curve: curveMonotoneX, "fill-opacity": 0.4, line: { class: "stroke-2" }, motion: "tween" },
+                xAxis: { format: (value) => formatAxisDate(value as Date), tickLabelProps: { rotate: -40, textAnchor: "end", verticalAnchor: "middle", dy: 6 } },
                 yAxis: { format: (value) => formatValue(Number(value)) },
                 grid: { style: "stroke-dasharray: 2", class: "stroke-1" },
             }}
@@ -54,11 +56,11 @@
                             vertical
                         >
                             {#snippet children({ gradient })}
-                                <Area seriesKey={series.key} curve={curveCatmullRom} fillOpacity={0.8} fill={gradient} line={{ class: "stroke-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)]" }} motion="tween" />
+                                <Area seriesKey={series.key} curve={curveMonotoneX} fillOpacity={0.8} fill={gradient} line={{ class: "stroke-2 drop-shadow-[0_2px_4px_rgba(0,0,0,0.12)]" }} motion="tween" />
                             {/snippet}
                         </LinearGradient>
                     {:else}
-                        <Area seriesKey={series.key} curve={curveCatmullRom} fill="none" line={{ stroke: "var(--color-muted-foreground)", strokeWidth: 1, "stroke-dasharray": "6 4" }} />
+                        <Area seriesKey={series.key} curve={curveMonotoneX} fill="none" line={{ stroke: "var(--color-muted-foreground)", strokeWidth: 1, "stroke-dasharray": "6 4" }} />
                     {/if}
                 {/each}
             {/snippet}

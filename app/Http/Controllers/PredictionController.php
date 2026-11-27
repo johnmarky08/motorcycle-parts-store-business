@@ -105,7 +105,7 @@ class PredictionController extends Controller
         $modelInfo = count($models) === 1
             ? $describe($models[0])
             : ['algorithm' => 'both', 'algorithm_label' => 'Both Models (Combined)', 'version' => null, 'trained_through' => $models[0]->trained_through?->toDateString(),
-               'components' => array_map($describe, $models)];
+                'components' => array_map($describe, $models)];
 
         // For "both", every model's own result is returned next to the combined one.
         $components = [];

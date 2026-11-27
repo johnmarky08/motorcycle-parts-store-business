@@ -11,10 +11,11 @@ Laravel 12 · Inertia 3 · Svelte 5 · Tailwind · MySQL/MariaDB · Python (scik
 | Accounts | Register (instant customer account), sign in, password reset by email, role-based access |
 | Inventory | Products, categories, audited stock movements (received / reduction / sale / correction), low and out-of-stock tracking |
 | Sales | Every customer order becomes a sale automatically (stock is deducted atomically); sales staff see the full history with customer names, filters and a date range. Read-only: nobody enters sales by hand |
-| User management | Instructor and admin change any account to any role, suspend or delete users |
+| User management | Instructors manage every account and role; admins manage every account except instructor accounts. Create users (password required), edit them (a new password needs the current one; blank keeps it), suspend or delete users |
 | Knowledge analysis | Dataset preview, upload and refresh from orders; Simple Linear Regression, Random Forest Regression or both; train / save / load models; evaluation metrics with descriptions |
 | Prediction | Product demand, sales, slow-moving products, best-selling products — with either model or both combined |
 | Dashboard | Role-specific cards and charts (customers have no dashboard: they start in the shop) |
+| Full-screen display | Every screen fills the whole browser window (no fixed-width column). The **full-screen button** in the header (or top-right on the sign-in pages) switches the browser to true full-screen mode, which stays on while moving between screens; installed as an app, it opens full-screen |
 
 ### Roles and access
 
@@ -26,8 +27,10 @@ Laravel 12 · Inertia 3 · Svelte 5 · Tailwind · MySQL/MariaDB · Python (scik
 | Admin | Dashboard, User Management, Prediction (inputs and outputs only — no metrics) |
 | Instructor | Dashboard, User Management, Prediction, Knowledge Analysis (datasets, training, evaluation metrics and descriptions) |
 
-The instructor is the most powerful role, then the admin. Both can change any account to any role, but nobody can change or delete their own
-account there, and at least one active instructor or admin always remains. Access is enforced on the server by route middleware, and the
+The instructor is the most powerful role, then the admin. The instructor can change any account to any role. The admin manages every other
+account but cannot assign the instructor role or edit, suspend or delete an instructor account (otherwise an admin could create an instructor
+account and reach the evaluation metrics). Nobody can change or delete their own account there, and at least one active instructor or admin
+always remains. Access is enforced on the server by route middleware, and the
 dashboard only offers links to pages the role may open.
 
 ### Registration and shopping flow
@@ -140,8 +143,9 @@ than MAPE. Because the data is synthetic, the two algorithms perform alike; real
 ## 4. Testing
 
 ```bash
-php artisan test                                  # 79 tests (SQLite in memory): auth, roles, shop and checkout, orders, inventory, dashboard, security, prediction
+php artisan test                                  # 92 tests (SQLite in memory): auth, roles, shop and checkout, orders, inventory, dashboard, security, prediction
 python -m unittest discover -s ml/tests -v        # 10 tests: training, saved-model prediction, both-models blending, integrity and path safety
+                                                  #   (use the Python that has ml/requirements.txt, e.g. .venv/Scripts/python on Windows)
 npm run build                                     # production frontend build
 ```
 
@@ -152,13 +156,13 @@ training); it is not part of the automated suites.
 
 | Risk | Controls |
 | --- | --- |
-| A01 Broken access control | `role:` middleware on every route group (deny by default) and `active` check on every request, suspended users signed out, nobody can change their own role or remove the last instructor/admin, customers only see their own orders, prices/totals computed on the server, refusals logged |
+| A01 Broken access control | `role:` middleware on every route group (deny by default) and `active` check on every request, suspended users signed out, nobody can change their own role or remove the last instructor/admin, admins cannot create or take over instructor accounts, each role's dashboard only receives the figures it shows, metrics are removed from the admin's prediction response on the server, customers only see their own orders, prices/totals computed on the server, refusals logged |
 | A02 Cryptographic failures | bcrypt hashing, encrypted sessions, `HttpOnly`/`SameSite=Lax` cookies, `SESSION_SECURE_COOKIE` + HSTS on HTTPS, `APP_DEBUG=false` by default |
 | A03 Injection | Eloquent/query-builder bindings, `LIKE` wildcards escaped, FormRequest/validator rules on every input, Python started with an argument array (no shell), Svelte escapes output |
 | A04 Insecure design | Customers cannot choose a role, checkout runs in a DB transaction with row locks and re-checks stock and prices on the server, idempotency keys against double submit, upload limits |
 | A05 Misconfiguration | Content-Security-Policy, X-Frame-Options, nosniff, Referrer/Permissions-Policy, `no-store` on signed-in pages, friendly error pages, uploads outside `public/` |
-| A06 Vulnerable components | Locked dependencies — run `composer audit`, `npm audit` and `pip list --outdated` before release |
-| A07 Authentication failures | Login throttling per email+IP, generic failure message, session regeneration, POST-only logout with CSRF, strong-password rule everywhere, throttled password reset that never reveals whether an email exists |
+| A06 Vulnerable components | Locked dependencies; `composer audit` and `npm audit` report no known vulnerabilities (checked Nov 27, 2026). Run them again, plus `pip list --outdated`, before every release |
+| A07 Authentication failures | Login throttling per email+IP, generic failure message, session regeneration, POST-only logout with CSRF, strong-password rule everywhere, throttled registration, reset-link requests and reset submissions, password reset that never reveals whether an email exists, changing a password in User Management requires the current password, `role`/`status` are not mass-assignable |
 | A08 Integrity failures | Saved models load only if their SHA-256 matches the database; Python reads only inside `storage/app/ml`; uploads are parsed and validated, never executed |
 | A09 Logging & monitoring | `storage/logs/security-*.log`: sign-ins and failures, denials, registrations, user changes, orders, uploads, model training |
 | A10 SSRF | The application never fetches user-supplied URLs |
@@ -174,12 +178,15 @@ app/Http/Middleware    EnsureUserRole, EnsureUserIsActive, SecurityHeaders, Hand
 app/Services/Ml        MlService (Laravel ↔ Python bridge, proc_open)
 app/Services/Datasets  CSV validation, previews, registry
 app/Mail               PhpMailTransport (MAIL_MAILER=phpmail)
+app/Notifications      ResetPasswordNotification (branded reset email, views in resources/views/emails)
+app/Support            ResetLink (sealed reset-link code), Like (LIKE escaping), NotificationFeed
 ml/                    cli.py, sales_model.py, demand_model.py, common.py, datasets/, templates/, tests/
 database/              migrations, factories, seeders (+ seeders/data/products.csv, generate_product_images.py)
 public/images          SVG illustrations of every product and category (replace any file with a real photo of the same name)
-public/favicon.svg     App icon (+ PNG sizes and site.webmanifest)
+public/favicon.svg     App icon (+ PNG sizes and site.webmanifest); images/logo.png is the reset-email logo (source: public/logo.svg)
 resources/js/Pages     Login, Register, ForgotPassword, ResetPassword, Shop, MyOrders, Dashboard, Inventory, Sales, UserManagement, Prediction, KnowledgeAnalysis, Error
-resources/js/lib       shadcn-style UI components
+resources/js/Components  Layout (header, sidebar) and Shared (BrandLogo, FullscreenToggle, StatCard, sales chart)
+resources/js/lib       shadcn-style UI components and label helpers
 docs/                  Requirement-by-requirement compliance matrix
 ```
 
@@ -190,9 +197,13 @@ docs/                  Requirement-by-requirement compliance matrix
   photos, save them as `public/images/products/<SKU>.jpg` and set the product's `image` column (or replace the `.svg` file).
 - Checkout records the payment method only; there is no payment gateway, delivery tracking or order status — an order is a completed sale the moment it is placed.
 - Email delivery needs your own SMTP credentials (see section 2); delivery to the inbox (instead of spam) cannot be guaranteed from a free address.
-- Windows behaviour of the Python launcher (no console window) was designed from the PHP/Windows process rules and the previous Tempus project;
-  it was verified on Linux only. If a console window still appears on your machine, tell us whether you use XAMPP/Apache or `php artisan serve` so the launcher can be adjusted.
-- Models are trained on the CSV datasets, not on live transactions; to include new sales, export them to the CSV layout and upload/retrain.
+- On Windows, the analysis runs with the windowless `pythonw.exe` from the project `.venv` (verified with `php artisan serve` on Windows 11).
+  If Windows **Smart App Control** blocks a freshly downloaded numpy/scipy DLL ("An Application Control policy has blocked this file"),
+  install widely used releases instead: `pip install numpy==2.1.3 scipy==1.14.1 scikit-learn==1.5.2 pandas==2.2.3`.
+- Models train on CSV datasets. New orders reach the models when an instructor presses **Refresh Datasets From Orders** and then retrains.
+- The sales models reach about 6.5–7% MAPE, but their R² on the hold-out weeks is close to 0. The hold-out covers only about 19 weeks, and the
+  week-to-week swings in that window are mostly random (the synthetic data draws daily orders at random), so there is little pattern left
+  for any model to explain. Judge sales forecasts by MAPE/WAPE; R² is more meaningful for product demand (about 0.50).
 - Not production-ready by test results alone: deployment, HTTPS, secrets management, monitoring and real-data governance still need review.
 
 ## 8. Contributors

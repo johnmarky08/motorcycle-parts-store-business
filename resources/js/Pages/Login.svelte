@@ -1,5 +1,6 @@
 <script>
     import { Link, router } from "@inertiajs/svelte";
+    import FullscreenToggle from "../Components/Shared/FullscreenToggle.svelte";
     import Button from "../lib/components/ui/Button.svelte";
     import Checkbox from "../lib/components/ui/Checkbox.svelte";
     import Input from "../lib/components/ui/Input.svelte";
@@ -46,12 +47,14 @@
     }
 </script>
 
+<FullscreenToggle floating />
+
 <svelte:head>
     <title>Sign In | One Prompt Away</title>
 </svelte:head>
 
 <main
-    class="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8 font-sans text-slate-900 sm:px-6"
+    class="flex min-h-screen items-center justify-center bg-slate-50 px-4 pb-8 pt-20 font-sans text-slate-900 sm:px-6"
 >
     <div
         class="grid w-full max-w-260 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,1.1fr)]"
@@ -91,22 +94,19 @@
                     <p
                         class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-300"
                     >
-                        Store Operations
+                        Welcome
                     </p>
                     <h1
                         class="mt-4 text-3xl font-semibold leading-tight tracking-tight"
                     >
-                        Keep every part, sale and forecast in view.
+                        The right parts for every ride.
                     </h1>
                     <p class="mt-4 text-sm leading-6 text-slate-300">
-                        A practical workspace for managing motorcycle parts,
-                        inventory, sales and analysis.
+                        Shop quality motorcycle parts and track your orders, all
+                        in one place for riders and the team behind the store.
                     </p>
                 </div>
             </div>
-            <p class="text-xs text-slate-400">
-                Authorized staff only. Activity on this system is logged.
-            </p>
         </section>
 
         <section class="p-6 sm:p-10">
@@ -153,26 +153,6 @@
                     Sign in to continue to your store workspace.
                 </p>
 
-                <div
-                    class="mt-6 flex items-start gap-3 rounded-md border border-blue-100 bg-blue-50/70 px-3.5 py-3 text-xs leading-5 text-blue-800"
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                        class="mt-0.5 h-4 w-4 shrink-0"
-                        aria-hidden="true"
-                        ><circle cx="12" cy="12" r="9" /><path
-                            d="M12 10v6M12 7h.01"
-                        /></svg
-                    >
-                    <p>
-                        <span class="font-semibold">Secure Access —</span> sign in
-                        with an approved account.
-                    </p>
-                </div>
-
                 {#if errors.email && !processing}
                     <div
                         class="mt-5 rounded-md border border-rose-200 bg-rose-50 px-3.5 py-3 text-xs leading-5 text-rose-700"
@@ -216,7 +196,7 @@
                                 ? "login-email-error"
                                 : undefined}
                             className={`h-11 ${errors.email ? "border-rose-300" : ""}`}
-                            placeholder="You@Example.Com"
+                            placeholder="you@example.com"
                         />
                         {#if errors.email}<p
                                 id="login-email-error"
@@ -299,17 +279,11 @@
                     </label>
 
                     <div class="flex justify-end">
-                        <div class="flex gap-3">
-                            <Link
-                                href="/register"
-                                class="text-xs font-medium text-blue-700 hover:text-blue-900"
-                                >Register</Link
-                            ><Link
-                                href="/forgot-password"
-                                class="text-xs font-medium text-blue-700 hover:text-blue-900"
-                                >Forgot Password?</Link
-                            >
-                        </div>
+                        <Link
+                            href="/forgot-password"
+                            class="text-xs font-medium text-blue-700 hover:text-blue-900"
+                            >Forgot Password?</Link
+                        >
                     </div>
 
                     <Button
@@ -324,10 +298,12 @@
                     </Button>
                 </form>
 
-                <p
-                    class="mt-8 text-center text-[11px] leading-5 text-slate-400"
-                >
-                    Don’t Have An Account? Register To Start Shopping.
+                <p class="mt-8 text-center text-xs leading-5 text-slate-500">
+                    Don’t Have An Account? <Link
+                        href="/register"
+                        class="font-semibold text-blue-700 hover:text-blue-900"
+                        >Register</Link
+                    > To Start Shopping.
                 </p>
             </div>
         </section>

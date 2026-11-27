@@ -41,17 +41,21 @@ class DashboardController extends Controller
         $periodStart = $anchor->copy()->subDays($range - 1)->startOfDay();
         $slowMovingSince = $anchor->copy()->subDays(90)->startOfDay();
 
-        $trend = (clone $completedSales)
+        $totalsByDay = (clone $completedSales)
             ->where('transaction_date', '>=', $periodStart)
             ->selectRaw('DATE(transaction_date) as date, SUM(total_amount) as total')
             ->groupBy(DB::raw('DATE(transaction_date)'))
-            ->orderBy('date')
-            ->get()
-            ->map(fn ($row) => [
-                'date' => $row->date,
-                'total' => (float) $row->total,
-            ])
-            ->values();
+            ->pluck('total', 'date');
+
+        // One point for every day of the period (₱0 on days without sales), so the chart has a dot per day
+        // and never draws a curve across days that had no sales. Empty when the store has no sales at all.
+        $trend = collect();
+        if ($latestSale) {
+            for ($day = $periodStart->copy(); $day->lte($anchor); $day->addDay()) {
+                $key = $day->toDateString();
+                $trend->push(['date' => $key, 'total' => (float) ($totalsByDay[$key] ?? 0)]);
+            }
+        }
 
         $bestSellers = SaleItem::query()
             ->select('sale_items.product_id', 'sale_items.product_name', 'sale_items.sku')
@@ -100,13 +104,19 @@ class DashboardController extends Controller
         $periodSales = (float) (clone $completedSales)->where('transaction_date', '>=', $periodStart)->sum('total_amount');
         $periodTransactions = (clone $completedSales)->where('transaction_date', '>=', $periodStart)->count();
 
+        // Each role only receives the figures its dashboard sections show (no hidden data in the page props).
+        $showSales = $sections['sales'];
+        $showInventory = $sections['inventory'];
+        $showRankings = $sections['rankings'];
+
         return Inertia::render('Dashboard', [
             'dashboard' => [
                 'sections' => $sections,
                 'data_as_of' => $anchor->toDateString(),
-                'period_sales' => $periodSales,
-                'period_transactions' => $periodTransactions,
-                'average_sale' => $periodTransactions > 0 ? round($periodSales / $periodTransactions, 2) : 0,
+                'period_start' => $periodStart->toDateString(), // first day counted by the period cards (ends on data_as_of)
+                'period_sales' => $showSales ? $periodSales : 0,
+                'period_transactions' => $showSales ? $periodTransactions : 0,
+                'average_sale' => $showSales && $periodTransactions > 0 ? round($periodSales / $periodTransactions, 2) : 0,
                 'recent_sales' => $role === Role::SalesPersonnel->value
                     ? Sale::query()->latest('transaction_date')->latest('id')->limit(6)
                         ->get(['id', 'transaction_number', 'customer_name', 'total_amount', 'payment_method', 'transaction_date'])
@@ -136,19 +146,19 @@ class DashboardController extends Controller
                     'predictions' => PredictionLog::count(),
                 ] : null,
                 'range' => $range,
-                'total_sales' => (float) (clone $completedSales)->sum('total_amount'),
-                'transactions' => (clone $completedSales)->count(),
-                'products' => $totalProducts,
-                'low_stock' => $lowStock,
-                'out_of_stock' => $outOfStock,
-                'inventory_health' => [
+                'total_sales' => $showSales ? (float) (clone $completedSales)->sum('total_amount') : 0,
+                'transactions' => $showSales ? (clone $completedSales)->count() : 0,
+                'products' => $showInventory ? $totalProducts : 0,
+                'low_stock' => $showInventory ? $lowStock : 0,
+                'out_of_stock' => $showInventory ? $outOfStock : 0,
+                'inventory_health' => $showInventory ? [
                     'healthy' => $healthyStock,
                     'low_stock' => $lowStock,
                     'out_of_stock' => $outOfStock,
-                ],
-                'sales_trend' => $trend,
-                'best_sellers' => $bestSellers,
-                'slow_moving' => $slowMoving,
+                ] : ['healthy' => 0, 'low_stock' => 0, 'out_of_stock' => 0],
+                'sales_trend' => $showSales ? $trend : [],
+                'best_sellers' => $showRankings ? $bestSellers : [],
+                'slow_moving' => $showRankings ? $slowMoving : [],
             ],
         ]);
     }

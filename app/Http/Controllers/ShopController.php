@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\StockMovement;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,8 @@ class ShopController extends Controller
 {
     public function index(Request $request): Response
     {
-        $products = Product::query()->with('category:id,name')->orderBy('name')->limit(2000)->get()
+        // Closures: a cart update reloads only "cart", "status" and "error", so the catalogue is not rebuilt.
+        $products = fn () => Product::query()->with('category:id,name')->orderBy('name')->limit(2000)->get()
             ->map(fn (Product $product) => [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -35,8 +37,8 @@ class ShopController extends Controller
 
         return Inertia::render('Shop', [
             'products' => $products,
-            'categories' => Category::orderBy('name')->get(['id', 'name']),
-            'cart' => $this->cartPayload($request),
+            'categories' => fn () => Category::orderBy('name')->get(['id', 'name']),
+            'cart' => fn () => $this->cartPayload($request),
             'paymentMethods' => config('store.payment_methods'),
         ]);
     }
@@ -169,6 +171,9 @@ class ShopController extends Controller
             });
         } catch (ValidationException $exception) {
             return back()->with('error', collect($exception->errors())->flatten()->first());
+        } catch (UniqueConstraintViolationException) {
+            // Two simultaneous submissions with the same key: the other one already created the order.
+            return redirect('/orders')->with('status', 'This order was already placed.');
         }
 
         Log::channel('security')->info('order.placed', ['sale_id' => $sale->id, 'user_id' => $user->id, 'total' => $sale->total_amount]);

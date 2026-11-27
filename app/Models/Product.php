@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Database\Factories\ProductFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
@@ -56,7 +57,7 @@ class Product extends Model
             return '/'.ltrim($this->image, '/');
         }
 
-        return '/images/categories/'.\Illuminate\Support\Str::slug($this->category?->name ?? 'general').'.svg';
+        return '/images/categories/'.Str::slug($this->category?->name ?? 'general').'.svg';
     }
 
     public function scopeOutOfStock(Builder $query): Builder

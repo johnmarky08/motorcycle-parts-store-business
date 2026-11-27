@@ -9,6 +9,7 @@ namespace App\Services\Datasets;
 class DatasetInspector
 {
     public const MAX_RECORDS = 300000;
+
     private const MAX_LINE = 65536;
 
     public const DEFINITIONS = [

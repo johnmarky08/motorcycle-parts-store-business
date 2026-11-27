@@ -19,7 +19,7 @@ class OrderController extends Controller
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
         ]);
 
-        $orders = Sale::query()->with('items')->where('customer_id', $request->user()->id)
+        $orders = Sale::query()->with('items.product.category:id,name')->where('customer_id', $request->user()->id)
             ->when($filters['search'] ?? null, fn ($query, $search) => $query->where('transaction_number', 'like', '%'.Like::escape($search).'%'))
             ->when($filters['date_from'] ?? null, fn ($query, $date) => $query->whereDate('transaction_date', '>=', $date))
             ->when($filters['date_to'] ?? null, fn ($query, $date) => $query->whereDate('transaction_date', '<=', $date))
@@ -32,7 +32,7 @@ class OrderController extends Controller
                 'payment_method' => $sale->payment_method,
                 'total_amount' => (float) $sale->total_amount,
                 'items' => $sale->items->map(fn ($item) => [
-                    'product_name' => $item->product_name, 'sku' => $item->sku, 'quantity' => $item->quantity,
+                    'product_name' => $item->product_name, 'sku' => $item->sku, 'image' => $item->product?->image_url ?? '/images/categories/general.svg', 'quantity' => $item->quantity,
                     'unit_price' => (float) $item->unit_price, 'line_total' => (float) $item->line_total,
                 ])->values(),
             ]);

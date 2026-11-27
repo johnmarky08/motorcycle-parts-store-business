@@ -189,7 +189,7 @@ class MlService
     }
 
     /**
-     * Runs the interpreter with proc_open (argument array, no shell, JSON on stdin) like the Tempus bridge.
+     * Runs the interpreter with proc_open (argument array, no shell, JSON on stdin).
      * No "create_new_console" option is used, so no command window is opened.
      *
      * @return array{0: string, 1: string, 2: int}

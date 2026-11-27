@@ -2,7 +2,6 @@
 
 namespace App\Services\Datasets;
 
-use App\Models\Category;
 use App\Models\Dataset;
 use App\Models\Product;
 use App\Models\User;
@@ -16,9 +15,7 @@ use Illuminate\Support\Facades\File;
  */
 class DatasetExporter
 {
-    public function __construct(private DatasetRegistry $registry)
-    {
-    }
+    public function __construct(private DatasetRegistry $registry) {}
 
     /** @return array{sales: Dataset, demand: Dataset} */
     public function refresh(?User $user): array

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="One Prompt Away">
+  <title>One Prompt Away</title>
+  <!-- Same mark as the sign-in page and sidebar: white motorcycle outline on a slate-900 rounded tile.
+       The outline is clipped to its 24x24 icon box exactly as the browser clips the inline icon on the site. -->
+  <defs><clipPath id="icon-box"><rect width="24" height="24"/></clipPath></defs>
+  <rect width="512" height="512" rx="112" fill="#0f172a"/>
+  <g transform="translate(64 42) scale(16)" clip-path="url(#icon-box)" fill="none" stroke="#ffffff" stroke-width="1.8">
+    <path d="M5 16.5h14M7 16.5a3 3 0 1 1-3-3v-1.2a5 5 0 0 1 10 0v1.2a3 3 0 1 1-3 3m6 0a3 3 0 1 1-3-3v-1.2a5 5 0 0 1 10 0v1.2a3 3 0 1 1-3 3"/>
+    <path d="M9 10h6"/>
+  </g>
+</svg>

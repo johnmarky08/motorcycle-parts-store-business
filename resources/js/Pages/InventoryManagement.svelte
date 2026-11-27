@@ -7,6 +7,7 @@
     import AppSidebar from "../Components/Layout/AppSidebar.svelte";
     import Badge from "../lib/components/ui/Badge.svelte";
     import Button from "../lib/components/ui/Button.svelte";
+    import { movementLabel } from "../lib/labels.js";
 
     export let products = {
         data: [],
@@ -20,7 +21,9 @@
     export let categories = [];
     export let filters = {};
     export let auth = { user: null };
-    export let flash = {};
+    export let summary = { total: 0, low_stock: 0, out_of_stock: 0 };
+    export let status = null;
+    export let error = null;
 
     let mobileMenuOpen = false;
     let showProductForm = false;
@@ -37,24 +40,32 @@
     let processing = false;
     let search = filters.search ?? "";
     let categoryId = String(filters.category_id ?? "");
-    let status = filters.status ?? "";
-    let sort = filters.sort ?? "";
+    let stockStatus = filters.status ?? "";
+    // With no filters Laravel sends `[]`, and an array's built-in .sort would leave the dropdown blank.
+    let sort = typeof filters.sort === "string" ? filters.sort : "";
     let categoryName = "";
     let productForm = emptyProduct();
     let stockForm = { movement_type: "received", quantity: "", note: "" };
     let errorMessage = "";
-    let successMessage = flash.status ?? "";
+    let successMessage = "";
+    let historyError = "";
 
+    $: if (status) successMessage = status;
+    $: if (error) errorMessage = error;
     $: rows = products.data ?? [];
-    $: totalProducts = products.total ?? 0;
-    $: lowStockCount = rows.filter(
-        (product) =>
-            product.stock_quantity > 0 &&
-            product.stock_quantity <= product.reorder_threshold,
-    ).length;
-    $: outOfStockCount = rows.filter(
-        (product) => product.stock_quantity === 0,
-    ).length;
+    // Counts come from the server and cover every product matching the filters, not only this page.
+    $: totalProducts = summary.total ?? products.total ?? 0;
+    $: lowStockCount = summary.low_stock ?? 0;
+    $: outOfStockCount = summary.out_of_stock ?? 0;
+
+    // Pagination labels from Laravel contain HTML entities such as "&laquo;"; show them as plain text.
+    function pageLabel(label) {
+        return String(label ?? "")
+            .replace(/&laquo;/g, "«")
+            .replace(/&raquo;/g, "»")
+            .replace(/&amp;/g, "&")
+            .replace(/<[^>]*>/g, "");
+    }
 
     onMount(() => {
         if (new URLSearchParams(window.location.search).get("create") === "1")
@@ -110,7 +121,7 @@
     function query(params = {}) {
         router.get(
             "/inventory",
-            { search, category_id: categoryId, status, sort, ...params },
+            { search, category_id: categoryId, status: stockStatus, sort, ...params },
             { preserveState: true, preserveScroll: true },
         );
     }
@@ -232,10 +243,16 @@
         historyProduct = product;
         showHistory = true;
         history = [];
-        const response = await fetch(`/inventory/${product.id}/movements`, {
-            headers: { Accept: "application/json" },
-        });
-        if (response.ok) history = (await response.json()).movements;
+        historyError = "";
+        try {
+            const response = await fetch(`/inventory/${product.id}/movements`, {
+                headers: { Accept: "application/json" },
+            });
+            if (!response.ok) throw new Error(String(response.status));
+            history = (await response.json()).movements;
+        } catch (failure) {
+            historyError = "The stock history could not be loaded. Please try again.";
+        }
     }
 
     function goToPage(url) {
@@ -253,7 +270,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
         <AppHeader title="Inventory Management" bind:mobileMenuOpen />
         <main class="min-h-0 flex-1 overflow-y-auto">
-            <div class="mx-auto max-w-370 px-4 py-6 sm:px-8 sm:py-8">
+            <div class="w-full px-4 py-6 sm:px-8 sm:py-8">
                 <div
                     class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
                 >
@@ -353,7 +370,7 @@
                                     value={category.id}>{category.name}</option
                                 >{/each}</select
                         ><select
-                            bind:value={status}
+                            bind:value={stockStatus}
                             class="h-9 rounded-md border border-slate-200 px-3 text-xs"
                             ><option value="">All Stock Statuses</option><option
                                 value="in_stock">In Stock</option
@@ -364,7 +381,7 @@
                         ><select
                             bind:value={sort}
                             class="h-9 rounded-md border border-slate-200 px-3 text-xs"
-                            ><option value="">Sort By Name</option><option
+                            ><option value="">Name A–Z</option><option
                                 value="price_asc">Price: Low To High</option
                             ><option value="price_desc"
                                 >Price: High To Low</option
@@ -496,7 +513,7 @@
                                         type="button"
                                         class={`rounded border px-2 py-1 ${link.active ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200"}`}
                                         on:click={() => goToPage(link.url)}
-                                        >{@html link.label}</button
+                                        >{pageLabel(link.label)}</button
                                     >{/if}{/each}
                         </div>
                     </div>
@@ -622,7 +639,7 @@
                     class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
                     ><option value="received">Receive Stock</option><option
                         value="reduction">Reduce Stock</option
-                    ><option value="correction">Correct Stock (Increase)</option
+                    ><option value="correction">Correct Stock (Decrease)</option
                     ></select
                 ><input
                     bind:value={stockForm.quantity}
@@ -681,7 +698,12 @@
                     class="text-slate-400">×</button
                 >
             </div>
-            {#if history.length === 0}<p
+            {#if historyError}<p
+                    class="py-10 text-center text-xs text-rose-600"
+                    role="alert"
+                >
+                    {historyError}
+                </p>{:else if history.length === 0}<p
                     class="py-10 text-center text-xs text-slate-500"
                 >
                     No stock movements recorded.
@@ -698,7 +720,7 @@
                         ><tbody class="divide-y divide-slate-100"
                             >{#each history as movement}<tr
                                     ><td class="py-3"
-                                        >{movement.movement_type}</td
+                                        >{movementLabel(movement.movement_type)}</td
                                     ><td class="py-3">{movement.quantity}</td
                                     ><td class="py-3"
                                         >{movement.balance_after}</td

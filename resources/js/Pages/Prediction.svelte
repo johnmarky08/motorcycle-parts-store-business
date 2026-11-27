@@ -86,7 +86,12 @@
         ),
     );
 
+    // Every run gets a number; a response that arrives after a newer run (or a workflow change) is ignored.
+    let requestId = 0;
+
     function selectWorkflow(nextWorkflow) {
+        if (status === "loading") return;
+        requestId += 1;
         workflow = nextWorkflow;
         errors = {};
         result = null;
@@ -145,15 +150,27 @@
             return;
         }
         status = "loading";
+        const current = ++requestId;
+        const runWorkflow = workflow;
         try {
             const { data } = await axios.post(
                 "/prediction/run",
                 buildPayload(),
+                { headers: { Accept: "application/json" } },
             );
+            if (current !== requestId || runWorkflow !== workflow) return;
+            if (!data || typeof data !== "object" || !data.result || data.workflow !== runWorkflow) {
+                throw new Error("Unexpected response");
+            }
             result = data;
             status = "result";
         } catch (error) {
+            if (current !== requestId) return;
             const response = error.response;
+            if (response?.status === 419 || response?.status === 401) {
+                window.location.href = "/login";
+                return;
+            }
             if (response?.status === 422 && response.data?.errors) {
                 const serverErrors = response.data.errors;
                 errors = {
@@ -173,6 +190,7 @@
     }
 
     function reset() {
+        requestId += 1;
         productId = "";
         modelName = "random_forest_regression";
         horizon = "30";
@@ -242,7 +260,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
         <AppHeader title="Prediction" bind:mobileMenuOpen />
         <main class="min-h-0 flex-1 overflow-y-auto">
-            <div class="mx-auto max-w-295 px-4 py-6 sm:px-8 sm:py-7">
+            <div class="w-full px-4 py-6 sm:px-8 sm:py-7">
                 <div
                     class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
                 >
@@ -980,7 +998,9 @@
                                             flagged. Showing the {result.result
                                                 .items.length} highest-risk items.
                                         </p>
-                                        <div class="space-y-3">
+                                        <div
+                                            class="max-h-80 space-y-3 overflow-y-auto pr-2"
+                                        >
                                             {#each result.result.items as item}<div
                                                     class="flex items-center gap-3 border-b border-slate-100 pb-3 last:border-0"
                                                 >
@@ -1039,17 +1059,25 @@
                                                     <p
                                                         class="mt-1 text-[10px] text-slate-400"
                                                     >
-                                                        {item.sku} · {item.predicted_units}
-                                                        units · {item.share_percent}%
+                                                        {item.sku} · {item.share_percent}%
                                                         of predicted units
                                                     </p>
                                                 </div>
-                                                <strong
-                                                    class="text-xs text-slate-800"
-                                                    >{peso(
-                                                        item.predicted_revenue,
-                                                    )}</strong
+                                                <div
+                                                    class="shrink-0 text-right"
                                                 >
+                                                    <strong
+                                                        class="block text-xs text-slate-800"
+                                                        >{item.predicted_units}
+                                                        units</strong
+                                                    >
+                                                    <strong
+                                                        class="mt-1 block text-xs text-slate-800"
+                                                        >{peso(
+                                                            item.predicted_revenue,
+                                                        )}</strong
+                                                    >
+                                                </div>
                                             </div>{/each}
                                     </div>
                                 {/if}

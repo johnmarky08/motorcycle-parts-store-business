@@ -62,7 +62,6 @@ class DashboardTest extends TestCase
             ['product_id' => $low->id, 'product_name' => $low->name, 'sku' => $low->sku, 'quantity' => 1, 'unit_price' => 50, 'line_total' => 50],
         ]);
 
-
         $this->actingAs($admin)->get('/dashboard')
             ->assertInertia(fn ($page) => $page
                 ->where('dashboard.total_sales', 250)
@@ -92,5 +91,28 @@ class DashboardTest extends TestCase
                     ->where('dashboard.best_sellers', [])
                     ->where('dashboard.slow_moving', []));
         }
+    }
+
+    public function test_period_cards_report_the_exact_date_range(): void
+    {
+        $sales = User::factory()->create(['role' => 'sales_personnel', 'status' => 'active']);
+        Sale::create(['customer_id' => $sales->id, 'customer_name' => 'Buyer', 'transaction_number' => 'TX-R-1', 'transaction_date' => '2026-11-27 10:00:00', 'payment_method' => 'Cash', 'total_amount' => 100]);
+        Sale::create(['customer_id' => $sales->id, 'customer_name' => 'Buyer', 'transaction_number' => 'TX-R-2', 'transaction_date' => '2026-10-29 09:00:00', 'payment_method' => 'Cash', 'total_amount' => 100]);
+        Sale::create(['customer_id' => $sales->id, 'customer_name' => 'Buyer', 'transaction_number' => 'TX-R-3', 'transaction_date' => '2026-10-28 23:00:00', 'payment_method' => 'Cash', 'total_amount' => 100]);
+
+        // 30 days ending on the latest sale: Oct 29 to Nov 27 inclusive, so the Oct 28 sale is outside
+        $this->actingAs($sales)->get('/dashboard')->assertInertia(fn ($page) => $page
+            ->where('dashboard.period_start', '2026-10-29')
+            ->where('dashboard.data_as_of', '2026-11-27')
+            ->where('dashboard.period_transactions', 2)
+            // the chart gets every day of the period, with 0 on days without sales
+            ->has('dashboard.sales_trend', 30)
+            ->where('dashboard.sales_trend.0', ['date' => '2026-10-29', 'total' => 100])
+            ->where('dashboard.sales_trend.1', ['date' => '2026-10-30', 'total' => 0])
+            ->where('dashboard.sales_trend.29', ['date' => '2026-11-27', 'total' => 100]));
+
+        $this->actingAs($sales)->get('/dashboard?range=365')->assertInertia(fn ($page) => $page
+            ->where('dashboard.period_start', '2025-11-28')
+            ->where('dashboard.period_transactions', 3));
     }
 }

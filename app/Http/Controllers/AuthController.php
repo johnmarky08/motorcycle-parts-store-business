@@ -2,15 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Support\ResetLink;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -28,7 +30,7 @@ class AuthController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
-        $key = 'registration|' . $request->ip();
+        $key = 'registration|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($key, 10)) {
             return back()->withErrors(['email' => 'Too many registration attempts. Try again later.'])->withInput();
@@ -43,7 +45,7 @@ class AuthController extends Controller
         ], ['name.regex' => 'Name may only contain letters, spaces, apostrophes, periods and hyphens.']);
 
         // Everyone who registers is a customer ("user"); staff roles are assigned in User Management.
-        $user = new \App\Models\User([
+        $user = new User([
             'name' => $data['name'],
             'email' => Str::lower($data['email']),
             'password' => $data['password'],
@@ -68,11 +70,11 @@ class AuthController extends Controller
             'remember' => ['boolean'],
         ]);
 
-        $key = Str::transliterate(Str::lower($credentials['email']) . '|' . $request->ip());
+        $key = Str::transliterate(Str::lower($credentials['email']).'|'.$request->ip());
 
         if (RateLimiter::tooManyAttempts($key, 5)) {
             return back()->withErrors([
-                'email' => 'Too many sign-in attempts. Try again in ' . RateLimiter::availableIn($key) . ' seconds.',
+                'email' => 'Too many sign-in attempts. Try again in '.RateLimiter::availableIn($key).' seconds.',
             ])->onlyInput('email');
         }
 
@@ -83,7 +85,7 @@ class AuthController extends Controller
         ], $credentials['remember'] ?? false)) {
             RateLimiter::hit($key);
             Log::channel('security')->warning('auth.login_failed', ['email' => Str::lower($credentials['email']), 'ip' => $request->ip()]);
-            $account = \App\Models\User::where('email', Str::lower($credentials['email']))->first();
+            $account = User::where('email', Str::lower($credentials['email']))->first();
             $message = 'These credentials do not match an active account.';
 
             if ($account && Hash::check($credentials['password'], $account->password)) {
@@ -136,21 +138,37 @@ class AuthController extends Controller
         return back()->with('status', 'If an account exists for that email address, a password reset link has been sent. The message can take a few minutes and may arrive in your spam or junk folder.');
     }
 
-    public function showResetPassword(Request $request, string $token): Response
+    public function showResetPassword(string $token): Response
     {
+        // The email comes from the sealed link, never from the address bar, so it cannot be edited.
+        $link = ResetLink::read($token);
+
         return Inertia::render('ResetPassword', [
-            'email' => $request->string('email')->toString(),
-            'token' => $token,
+            'email' => $link['email'] ?? '',
+            'token' => $link ? $token : '',
+            'invalid' => $link === null,
         ]);
     }
 
     public function resetPassword(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
-            'token' => ['required'],
-            'email' => ['required', 'email'],
+        $data = $request->validate([
+            'token' => ['required', 'string', 'max:2048'],
             'password' => ['required', 'confirmed', PasswordRule::defaults()],
         ]);
+
+        // Only the email sealed inside the link is used; any "email" field sent by the browser is ignored.
+        $link = ResetLink::read($data['token']);
+        if ($link === null) {
+            return back()->withErrors(['email' => 'This password reset link is invalid. Please request a new one.']);
+        }
+
+        $credentials = [
+            'email' => $link['email'],
+            'token' => $link['token'],
+            'password' => $data['password'],
+            'password_confirmation' => $request->input('password_confirmation'),
+        ];
 
         $status = Password::reset($credentials, function ($user, $password) {
             $user->forceFill([
@@ -161,6 +179,6 @@ class AuthController extends Controller
 
         return $status === Password::PASSWORD_RESET
             ? redirect('/login')->with('status', __($status))
-            : back()->withErrors(['email' => [__($status)]])->withInput(['email']);
+            : back()->withErrors(['email' => [__($status)]]);
     }
 }

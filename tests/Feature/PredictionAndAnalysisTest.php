@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Dataset;
 use App\Models\MlModel;
 use App\Models\Product;
+use App\Models\Sale;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -72,7 +73,7 @@ class PredictionAndAnalysisTest extends TestCase
     public function test_upload_accepts_a_valid_dataset(): void
     {
         $instructor = User::factory()->instructor()->create();
-        $rows = ["transaction_number,transaction_date,product_id,product_name,quantity,unit_price,total_amount"];
+        $rows = ['transaction_number,transaction_date,product_id,product_name,quantity,unit_price,total_amount'];
         for ($i = 1; $i <= 1100; $i++) {
             $rows[] = sprintf('TX-%d,2026-01-%02d 10:00:00,1,Brake Pad,1,100.00,100.00', $i, ($i % 28) + 1);
         }
@@ -126,7 +127,7 @@ class PredictionAndAnalysisTest extends TestCase
     public function test_refreshing_datasets_from_orders_needs_enough_orders(): void
     {
         $customer = User::factory()->customer()->create();
-        \App\Models\Sale::create(['customer_id' => $customer->id, 'customer_name' => $customer->name, 'transaction_number' => 'TX-1', 'transaction_date' => now(), 'payment_method' => 'Cash', 'total_amount' => 10]);
+        Sale::create(['customer_id' => $customer->id, 'customer_name' => $customer->name, 'transaction_number' => 'TX-1', 'transaction_date' => now(), 'payment_method' => 'Cash', 'total_amount' => 10]);
 
         $this->actingAs(User::factory()->instructor()->create())->post('/knowledge-analysis/datasets/refresh')->assertSessionHas('error');
         $this->assertDatabaseCount('datasets', 0);

@@ -2,6 +2,7 @@
     import { onMount, tick } from "svelte";
     import { page } from "@inertiajs/svelte";
     import Button from "../../lib/components/ui/Button.svelte";
+    import FullscreenToggle from "../Shared/FullscreenToggle.svelte";
 
     export let title = "Dashboard";
     export let mobileMenuOpen = false;
@@ -88,7 +89,8 @@
         <div class="hidden h-5 w-px bg-slate-200 lg:block"></div>
         <p class="text-sm font-semibold tracking-tight text-slate-700">{title}</p>
     </div>
-    <div class="flex items-center gap-3 sm:gap-4">
+    <div class="flex items-center gap-1 sm:gap-2">
+        <FullscreenToggle />
         <button
             bind:this={notificationBell}
             type="button"
@@ -98,7 +100,7 @@
             aria-controls="notification-panel"
             onclick={(event) => { event.stopPropagation(); toggleNotifications(); }}
         >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-[19px] w-[19px]" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4.75 w-4.75" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
             {#if unreadCount > 0}
                 <span class="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-blue-600 ring-2 ring-white"></span>
             {/if}
@@ -117,7 +119,7 @@
                 <div>
                     <h2 class="text-sm font-semibold text-slate-900">Notifications</h2>
                     <p class="mt-0.5 text-xs text-slate-500">
-                        {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}` : "You'Re All Caught Up"}
+                        {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}` : "You're all caught up"}
                     </p>
                 </div>
                 <div class="flex items-center gap-2">
@@ -126,7 +128,7 @@
                             Mark All As Read
                         </button>
                     {/if}
-                    <button type="button" class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label="Close Notifications" onclick={closeNotifications}>
+                    <button type="button" class="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700" aria-label="Close Notifications" onclick={closeNotifications}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4 w-4" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
                     </button>
                 </div>

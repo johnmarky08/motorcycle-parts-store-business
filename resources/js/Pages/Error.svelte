@@ -1,5 +1,7 @@
 <script>
     import { Link } from "@inertiajs/svelte";
+    import BrandLogo from "../Components/Shared/BrandLogo.svelte";
+    import FullscreenToggle from "../Components/Shared/FullscreenToggle.svelte";
     export let status = 500;
 
     const messages = {
@@ -28,16 +30,19 @@
     $: message = messages[status] ?? messages[500];
 </script>
 
+<FullscreenToggle floating />
+
 <svelte:head>
     <title>{message.title} | One Prompt Away</title>
 </svelte:head>
 
 <main
-    class="flex min-h-screen items-center justify-center bg-slate-50 px-4 font-sans text-slate-900"
+    class="flex min-h-screen items-center justify-center bg-slate-50 px-4 pb-8 pt-20 font-sans text-slate-900"
 >
     <div
         class="w-full max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm"
     >
+        <BrandLogo className="mb-8 justify-center" />
         <p
             class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600"
         >

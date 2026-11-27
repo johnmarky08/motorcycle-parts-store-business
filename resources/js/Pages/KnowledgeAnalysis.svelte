@@ -5,6 +5,7 @@
     import AppHeader from "../Components/Layout/AppHeader.svelte";
     import AppSidebar from "../Components/Layout/AppSidebar.svelte";
     import Button from "../lib/components/ui/Button.svelte";
+    import { fieldLabel, fieldList } from "../lib/labels.js";
 
     export let datasets = [];
     export let selectedDatasetId = null;
@@ -71,14 +72,19 @@
     $: monthly = selected?.summary?.monthly ?? [];
     $: monthlyMax = Math.max(1, ...monthly.map((item) => item.value));
 
+    // Short label under each bar, e.g. "Nov ’26" (the apostrophe marks the year, so it is not read as a day).
     function monthLabel(month) {
+        const date = new Date(`${month}-01T00:00:00`);
+        if (Number.isNaN(date.getTime())) return month;
+        return `${date.toLocaleDateString("en-PH", { month: "short" })} ’${String(date.getFullYear()).slice(-2)}`;
+    }
+
+    // Full label for the hover text, e.g. "November 2026".
+    function monthTitle(month) {
         const date = new Date(`${month}-01T00:00:00`);
         return Number.isNaN(date.getTime())
             ? month
-            : date.toLocaleDateString("en-PH", {
-                  month: "short",
-                  year: "2-digit",
-              });
+            : date.toLocaleDateString("en-PH", { month: "long", year: "numeric" });
     }
 
     function refreshFromOrders() {
@@ -234,7 +240,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
         <AppHeader title="Knowledge Analysis" bind:mobileMenuOpen />
         <main class="min-h-0 flex-1 overflow-y-auto">
-            <div class="mx-auto max-w-295 px-4 py-6 sm:px-8 sm:py-7">
+            <div class="w-full px-4 py-6 sm:px-8 sm:py-7">
                 <div
                     class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
                 >
@@ -354,7 +360,7 @@
                                     <p
                                         class="mt-1 truncate font-semibold text-slate-800"
                                     >
-                                        {dataset.target}
+                                        {fieldLabel(dataset.target)}
                                     </p>
                                 </div>
                             </div>
@@ -421,13 +427,13 @@
                                 <p class="mt-1">
                                     <span class="text-slate-400"
                                         >Target Variable:</span
-                                    > <strong>{selected.target}</strong>
+                                    > <strong>{fieldLabel(selected.target)}</strong>
                                 </p>
                                 <p class="mt-1">
                                     <span class="text-slate-400"
                                         >Input Features:</span
                                     >
-                                    {selected.features.join(", ")}
+                                    {fieldList(selected.features)}
                                 </p>
                                 {#if selected.filename}<p class="mt-1">
                                         <span class="text-slate-400">File:</span
@@ -447,7 +453,8 @@
                                     ><tbody class="divide-y divide-slate-50"
                                         >{#each selected.schema as column}<tr
                                                 ><td
-                                                    class="py-1.5 text-xs text-slate-700"
+                                                    class="py-1.5 font-mono text-[11px] text-slate-700"
+                                                    title={fieldLabel(column[0])}
                                                     >{column[0]}</td
                                                 ><td
                                                     class="py-1.5 text-xs text-slate-400"
@@ -476,7 +483,7 @@
                             >
                                 {#each monthly as item}<div
                                         class="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
-                                        title={`${item.month}: ${number(item.value)}`}
+                                        title={`${monthTitle(item.month)}: ${number(item.value)}`}
                                     >
                                         <div
                                             class="w-full rounded-t bg-blue-500/80 group-hover:bg-blue-600"
@@ -571,7 +578,8 @@
                                             class="border-b border-slate-100 text-[10px] font-semibold uppercase tracking-wider text-slate-400"
                                             >{#each preview.columns as column}<th
                                                     class="whitespace-nowrap px-4 py-3"
-                                                    >{column}</th
+                                                    title={column}
+                                                    >{fieldLabel(column)}</th
                                                 >{/each}</tr
                                         ></thead
                                     ><tbody class="divide-y divide-slate-100"
@@ -911,7 +919,7 @@
                                                                 class="text-slate-400"
                                                                 >Target:</span
                                                             >
-                                                            {model.target}
+                                                            {fieldLabel(model.target)}
                                                         </p>
                                                         <p>
                                                             <span
@@ -939,9 +947,7 @@
                                                             class="text-slate-400"
                                                             >Features:</span
                                                         >
-                                                        {model.features.join(
-                                                            ", ",
-                                                        )}
+                                                        {fieldList(model.features)}
                                                     </p>
                                                     {#if model.eval_protocol}<p
                                                             class="mt-1"
@@ -1006,7 +1012,7 @@
             class="static m-0 w-full max-w-lg rounded-xl border border-slate-200 bg-white p-5 shadow-xl"
             aria-labelledby="upload-title"
         >
-            <div class="flex items-start justify-between">
+            <div class="flex items-start justify-between gap-3">
                 <div>
                     <h2
                         id="upload-title"
@@ -1021,7 +1027,7 @@
                 </div>
                 <button
                     type="button"
-                    class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                    class="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                     aria-label="Close Upload Form"
                     on:click={() => (showUpload = false)}>×</button
                 >

@@ -124,4 +124,22 @@ class ShopTest extends TestCase
         $this->actingAs($seller)->get('/sales?date_from=2026-06-01')->assertInertia(fn ($page) => $page->has('transactions.data', 0));
         $this->actingAs($seller)->post('/sales', [])->assertStatus(405);
     }
+
+    public function test_order_details_include_item_pictures_even_after_a_product_is_removed(): void
+    {
+        $customer = User::factory()->customer()->create();
+        $seller = User::factory()->create(['role' => 'sales_personnel', 'status' => 'active']);
+        $kept = $this->product(['name' => 'Chain', 'image' => 'images/products/CH-DID-428.svg']);
+        $removed = $this->product(['name' => 'Old Mirror']);
+        $sale = Sale::create(['customer_id' => $customer->id, 'customer_name' => $customer->name, 'transaction_number' => 'TX-IMG-1', 'transaction_date' => now(), 'payment_method' => 'Cash', 'total_amount' => 1000]);
+        $sale->items()->create(['product_id' => $kept->id, 'product_name' => 'Chain', 'sku' => $kept->sku, 'quantity' => 1, 'unit_price' => 500, 'line_total' => 500]);
+        $sale->items()->create(['product_id' => $removed->id, 'product_name' => 'Old Mirror', 'sku' => $removed->sku, 'quantity' => 1, 'unit_price' => 500, 'line_total' => 500]);
+        $removed->saleItems()->update(['product_id' => null]); // the product no longer exists for this order line
+
+        $this->actingAs($customer)->get('/orders')->assertInertia(fn ($page) => $page
+            ->where('orders.data.0.items.0.image', '/images/products/CH-DID-428.svg')
+            ->where('orders.data.0.items.1.image', '/images/categories/general.svg'));
+        $this->actingAs($seller)->get('/sales')->assertInertia(fn ($page) => $page
+            ->where('transactions.data.0.items.0.image', '/images/products/CH-DID-428.svg'));
+    }
 }

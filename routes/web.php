@@ -9,9 +9,10 @@ use App\Http\Controllers\PredictionController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\UserManagementController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect(auth()->check() ? auth()->user()->homePath() : '/login'));
+Route::get('/', fn () => redirect(Auth::user()?->homePath() ?? '/login'));
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -21,7 +22,7 @@ Route::middleware('guest')->group(function () {
     Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
     Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->middleware('throttle:forgot-password')->name('password.email');
     Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
-    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1')->name('password.update');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');

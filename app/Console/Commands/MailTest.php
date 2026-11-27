@@ -17,7 +17,7 @@ class MailTest extends Command
         $this->line("Sending with mailer \"{$mailer}\" from ".config('mail.from.address').' ...');
 
         try {
-            Mail::raw("This is a test message from ".config('app.name').".\nIf you can read this, password reset emails will work.", function ($message) {
+            Mail::raw('This is a test message from '.config('app.name').".\nIf you can read this, password reset emails will work.", function ($message) {
                 $message->to($this->argument('email'))->subject(config('app.name').' mail test');
             });
         } catch (\Throwable $exception) {

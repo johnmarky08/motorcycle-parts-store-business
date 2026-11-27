@@ -16,11 +16,10 @@
     export let auth = { user: null };
 
     const PAGE_SIZE = 24;
-    const partial = {
-        preserveScroll: true,
-        preserveState: true,
-        only: ["cart", "status", "error"],
-    };
+    const MAX_PER_LINE = 1000; // same limit as the server's cart validation
+
+    // Product ids with a cart request in flight: their buttons show "Adding…" and ignore extra clicks.
+    let busy = new Set();
 
     let mobileMenuOpen = false;
     let cartOpen = false;
@@ -75,13 +74,15 @@
         cart.items.map((item) => [item.product_id, item.quantity]),
     );
 
-    // Show server messages (added to cart, errors) as a short toast.
-    $: if (status || error)
-        showToast(
-            error
-                ? { type: "error", text: error }
-                : { type: "success", text: status },
-        );
+    // Messages that arrive with a full page load (for example after checkout fails) appear as a toast.
+    onMount(() => {
+        if (status || error) showFlash({ status, error });
+    });
+
+    function showFlash(props) {
+        if (props?.error) showToast({ type: "error", text: props.error });
+        else if (props?.status) showToast({ type: "success", text: props.status });
+    }
 
     function showToast(next) {
         toast = next;
@@ -108,21 +109,80 @@
         selectedQuantity = 1;
     }
 
-    function addToCart(product, quantity = 1) {
-        router.post("/cart", { product_id: product.id, quantity }, partial);
+    // Cart changes reload only the cart and its message, without the page-wide loading bar:
+    // the button that was clicked shows its own progress instead.
+    function cartRequest(method, url, data, key, onDone = null) {
+        if (busy.has(key)) return;
+        router.visit(url, {
+            method,
+            data,
+            only: ["cart", "status", "error"],
+            preserveScroll: true,
+            preserveState: true,
+            showProgress: false,
+            onStart: () => (busy = new Set(busy).add(key)),
+            onFinish: () => {
+                const next = new Set(busy);
+                next.delete(key);
+                busy = next;
+                onDone?.();
+            },
+            onSuccess: (result) => showFlash(result.props),
+            onError: () => showToast({ type: "error", text: "The cart could not be updated. Please try again." }),
+        });
     }
 
-    function changeQuantity(item, quantity) {
+    function addToCart(product, quantity = 1) {
+        cartRequest("post", "/cart", { product_id: product.id, quantity }, product.id);
+    }
+
+    function changeQuantity(item, quantity, onDone = null) {
         if (quantity < 1) return;
-        router.patch(`/cart/${item.product_id}`, { quantity }, partial);
+        cartRequest("patch", `/cart/${item.product_id}`, { quantity }, item.product_id, onDone);
+    }
+
+    // Turns typed text into a whole number from 1 to the stock available (null when it is not a number).
+    function cleanQuantity(raw, stock, name) {
+        const typed = Math.floor(Number(String(raw).trim()));
+        if (!Number.isFinite(typed) || String(raw).trim() === "") return null;
+        const max = Math.max(1, Math.min(stock, MAX_PER_LINE));
+        if (typed > max)
+            showToast({
+                type: "error",
+                text: stock > MAX_PER_LINE
+                    ? `You can order up to ${MAX_PER_LINE} units of one item at a time.`
+                    : `Only ${stock} units of ${name} are available.`,
+            });
+        return Math.min(Math.max(typed, 1), max);
+    }
+
+    // A quantity typed in the cart is saved when the field loses focus or Enter is pressed.
+    function commitCartQuantity(item, input) {
+        const quantity = cleanQuantity(input.value, item.stock, item.name);
+        if (quantity === null || quantity === item.quantity) {
+            input.value = String(item.quantity);
+            return;
+        }
+        input.value = String(quantity);
+        // Afterwards show what the server really saved (it may refuse if stock changed meanwhile).
+        changeQuantity(item, quantity, () => {
+            const saved = cart.items.find((line) => line.product_id === item.product_id);
+            if (saved) input.value = String(saved.quantity);
+        });
+    }
+
+    function commitSelectedQuantity(input) {
+        const quantity = cleanQuantity(input.value, selected.stock, selected.name) ?? selectedQuantity;
+        selectedQuantity = quantity;
+        input.value = String(quantity);
     }
 
     function removeItem(item) {
-        router.delete(`/cart/${item.product_id}`, partial);
+        cartRequest("delete", `/cart/${item.product_id}`, {}, item.product_id);
     }
 
     function clearCart() {
-        router.delete("/cart", partial);
+        cartRequest("delete", "/cart", {}, "all");
     }
 
     function placeOrder() {
@@ -133,7 +193,12 @@
             {
                 onStart: () => (placing = true),
                 onFinish: () => (placing = false),
-                onSuccess: () => {
+                onSuccess: (result) => {
+                    // A refused checkout (for example not enough stock) comes back to the shop with an error.
+                    if (result.props?.error) {
+                        showFlash(result.props);
+                        return;
+                    }
                     idempotencyKey = crypto.randomUUID(); // a new order needs a new key
                     cartOpen = false;
                 },
@@ -144,23 +209,33 @@
 
 <svelte:head><title>Shop | One Prompt Away</title></svelte:head>
 
-{#snippet cartPanel()}
+{#snippet cartPanel(onClose = null)}
     <div class="flex h-full min-h-0 flex-col">
+        <!-- Title, "Clear Cart" and the close button share one row in normal flow, so they can never overlap. -->
         <div
-            class="flex items-center justify-between border-b border-slate-200 px-5 py-4"
+            class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4"
         >
-            <div>
+            <div class="min-w-0">
                 <h2 class="text-sm font-semibold text-slate-950">Your Cart</h2>
                 <p class="mt-0.5 text-xs text-slate-500">
                     {cart.count}
                     {cart.count === 1 ? "Item" : "Items"}
                 </p>
             </div>
-            {#if cart.items.length}<button
-                    type="button"
-                    class="text-xs font-semibold text-rose-600 hover:text-rose-700"
-                    on:click={clearCart}>Clear Cart</button
-                >{/if}
+            <div class="flex shrink-0 items-center gap-2">
+                {#if cart.items.length}<button
+                        type="button"
+                        class="rounded-md px-2 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                        on:click={clearCart}>Clear Cart</button
+                    >{/if}
+                {#if onClose}<button
+                        type="button"
+                        class="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        aria-label="Close Cart"
+                        on:click={onClose}
+                        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-4.5 w-4.5" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg></button
+                    >{/if}
+            </div>
         </div>
 
         <div class="min-h-0 flex-1 overflow-y-auto px-5">
@@ -191,20 +266,36 @@
                                     type="button"
                                     class="h-7 w-7 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                                     aria-label={`Decrease ${item.name}`}
-                                    disabled={item.quantity <= 1}
+                                    disabled={item.quantity <= 1 || busy.has(item.product_id)}
                                     on:click={() =>
                                         changeQuantity(item, item.quantity - 1)}
                                     >−</button
                                 >
-                                <span
-                                    class="w-8 text-center text-xs font-semibold"
-                                    aria-live="polite">{item.quantity}</span
-                                >
+                                <input
+                                    type="number"
+                                    inputmode="numeric"
+                                    min="1"
+                                    max={item.stock}
+                                    step="1"
+                                    value={item.quantity}
+                                    disabled={busy.has(item.product_id)}
+                                    aria-label={`Quantity of ${item.name}`}
+                                    class="h-7 w-12 border-x border-slate-200 bg-white text-center text-xs font-semibold text-slate-900 outline-none [appearance:textfield] focus:ring-2 focus:ring-inset focus:ring-blue-200 disabled:opacity-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                    on:focus={(event) => event.currentTarget.select()}
+                                    on:change={(event) => commitCartQuantity(item, event.currentTarget)}
+                                    on:keydown={(event) => {
+                                        if (event.key === "Enter") event.currentTarget.blur();
+                                        if (event.key === "Escape") {
+                                            event.currentTarget.value = String(item.quantity);
+                                            event.currentTarget.blur();
+                                        }
+                                    }}
+                                />
                                 <button
                                     type="button"
                                     class="h-7 w-7 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40"
                                     aria-label={`Increase ${item.name}`}
-                                    disabled={item.quantity >= item.stock}
+                                    disabled={item.quantity >= item.stock || busy.has(item.product_id)}
                                     on:click={() =>
                                         changeQuantity(item, item.quantity + 1)}
                                     >+</button
@@ -315,7 +406,7 @@
         <AppHeader title="Shop" bind:mobileMenuOpen />
         <div class="flex min-h-0 flex-1">
             <main class="min-h-0 min-w-0 flex-1 overflow-y-auto">
-                <div class="mx-auto max-w-295 px-4 py-6 sm:px-8 sm:py-7">
+                <div class="w-full px-4 py-6 sm:px-8 sm:py-7">
                     <div
                         class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
                     >
@@ -385,11 +476,10 @@
                         {#each ["All", ...categories.map((item) => item.name)] as name}
                             <button
                                 type="button"
-                                class:bg-slate-900={category === name}
-                                class:text-white={category === name}
-                                class:border-slate-900={category === name}
-                                class:text-slate-600={category !== name}
-                                class="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold hover:border-slate-400"
+                                class="rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors {category === name
+                                    ? 'border-slate-900 bg-slate-900 text-white'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900'}"
+                                aria-pressed={category === name}
                                 on:click={() => setCategory(name)}
                             >
                                 {name}
@@ -477,13 +567,16 @@
                                                 type="button"
                                                 className="h-8 text-xs"
                                                 disabled={product.stock === 0 ||
+                                                    busy.has(product.id) ||
                                                     (inCart[product.id] ?? 0) >=
                                                         product.stock}
                                                 onclick={() =>
                                                     addToCart(product)}
                                                 >{product.stock === 0
                                                     ? "Sold Out"
-                                                    : inCart[product.id]
+                                                    : busy.has(product.id)
+                                                      ? "Adding…"
+                                                      : inCart[product.id]
                                                       ? `In Cart (${inCart[product.id]})`
                                                       : "Add To Cart"}</Button
                                             >
@@ -531,13 +624,7 @@
             class="absolute inset-y-0 right-0 w-full max-w-100 bg-white shadow-xl"
             aria-label="Shopping Cart"
         >
-            <button
-                type="button"
-                class="absolute right-3 top-3 z-10 rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-                aria-label="Close Cart"
-                on:click={() => (cartOpen = false)}>×</button
-            >
-            {@render cartPanel()}
+            {@render cartPanel(() => (cartOpen = false))}
         </aside>
     </div>
 {/if}
@@ -569,7 +656,7 @@
                             >{selected.category}</span
                         ><button
                             type="button"
-                            class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                            class="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                             aria-label="Close Product"
                             on:click={() => (selected = null)}>×</button
                         >
@@ -612,10 +699,19 @@
                                     on:click={() => (selectedQuantity -= 1)}
                                     >−</button
                                 >
-                                <span
-                                    class="w-10 text-center text-sm font-semibold"
-                                    >{selectedQuantity}</span
-                                >
+                                <input
+                                    type="number"
+                                    inputmode="numeric"
+                                    min="1"
+                                    max={selected.stock}
+                                    step="1"
+                                    value={selectedQuantity}
+                                    aria-label="Quantity"
+                                    class="h-9 w-14 border-x border-slate-200 bg-white text-center text-sm font-semibold text-slate-900 outline-none [appearance:textfield] focus:ring-2 focus:ring-inset focus:ring-blue-200 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                    on:focus={(event) => event.currentTarget.select()}
+                                    on:change={(event) => commitSelectedQuantity(event.currentTarget)}
+                                    on:keydown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+                                />
                                 <button
                                     type="button"
                                     class="h-9 w-9 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
@@ -644,14 +740,14 @@
 
 {#if toast}
     <div
-        transition:fly={{ y: 16, duration: 180 }}
+        transition:fly={{ y: -16, duration: 180 }}
         class:border-emerald-200={toast.type === "success"}
         class:bg-emerald-50={toast.type === "success"}
         class:text-emerald-800={toast.type === "success"}
         class:border-rose-200={toast.type === "error"}
         class:bg-rose-50={toast.type === "error"}
         class:text-rose-800={toast.type === "error"}
-        class="fixed bottom-5 left-1/2 z-60 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-md border px-4 py-3 text-xs shadow-lg"
+        class="pointer-events-none fixed left-1/2 top-20 z-60 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-md border px-4 py-3 text-xs shadow-lg"
         role={toast.type === "error" ? "alert" : "status"}
     >
         {toast.text}

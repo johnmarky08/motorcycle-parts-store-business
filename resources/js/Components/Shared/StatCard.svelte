@@ -11,7 +11,7 @@
 
 <Card.Root class="rounded-xl shadow-sm transition-shadow hover:shadow-md">
 <Card.Content class="p-5">
-    <div class="flex items-start justify-between">
+    <div class="flex items-start justify-between gap-3">
         <div>
             <p class="text-xs font-medium text-slate-500">{label}</p>
             <p class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{value}</p>

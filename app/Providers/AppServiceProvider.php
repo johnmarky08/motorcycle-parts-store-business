@@ -29,7 +29,7 @@ class AppServiceProvider extends ServiceProvider
         Password::defaults(fn () => Password::min(8)->letters()->mixedCase()->numbers()->symbols());
 
         // MAIL_MAILER=phpmail sends with PHP's mail() function.
-        Mail::extend('phpmail', fn () => new PhpMailTransport());
+        Mail::extend('phpmail', fn () => new PhpMailTransport);
 
         RateLimiter::for('forgot-password', fn (Request $request) => Limit::perMinute(3)
             ->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip())

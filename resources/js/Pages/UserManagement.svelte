@@ -5,20 +5,30 @@
     import AppHeader from "../Components/Layout/AppHeader.svelte";
     import AppSidebar from "../Components/Layout/AppSidebar.svelte";
     import Button from "../lib/components/ui/Button.svelte";
+    import { ROLE_LABELS } from "../lib/labels.js";
 
     export let initialUsers = [];
     export let auth = { user: null };
+    // Roles this account may assign, and roles whose accounts it may not change (both decided by the server).
+    export let roles = [];
+    export let protectedRoles = [];
+    export let status = null;
+    export let error = null;
 
     // Always mirror the server data so approvals, edits and status changes show immediately.
     $: users = initialUsers.map((user) => ({ ...user }));
+    $: if (status) successMessage = status;
+    $: if (error) errorMessage = error;
 
-    const roles = [
-        { value: "admin", label: "Admin" },
-        { value: "instructor", label: "Instructor" },
-        { value: "inventory_clerk", label: "Inventory Clerk" },
-        { value: "sales_personnel", label: "Sales Personnel" },
-        { value: "user", label: "User" },
-    ];
+    const roleLabels = ROLE_LABELS;
+
+    function canManage(user) {
+        return !protectedRoles.includes(user.role);
+    }
+
+    function isSelf(user) {
+        return user.id === auth?.user?.id;
+    }
 
     let search = "";
     let roleFilter = "";
@@ -33,7 +43,7 @@
     let mobileMenuOpen = false;
 
     function emptyForm() {
-        return { name: "", email: "", role: "user", status: "active" };
+        return { name: "", email: "", role: "user", status: "active", password: "", current_password: "" };
     }
 
     $: filteredUsers = users.filter((user) => {
@@ -59,7 +69,7 @@
     }
 
     function roleLabel(value) {
-        return roles.find((role) => role.value === value)?.label ?? value;
+        return roleLabels[value] ?? value;
     }
 
     function initials(name) {
@@ -87,6 +97,8 @@
             email: user.email,
             role: user.role,
             status: user.status,
+            password: "",
+            current_password: "",
         };
         formErrors = {};
         errorMessage = "";
@@ -107,6 +119,22 @@
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
             errors.email = "Enter a valid email address.";
         if (!form.role) errors.role = "Select a role.";
+        if (!editingUserId && !form.password)
+            errors.password = "Password is required.";
+        else if (
+            form.password &&
+            !(
+                form.password.length >= 8 &&
+                /[a-z]/.test(form.password) &&
+                /[A-Z]/.test(form.password) &&
+                /\d/.test(form.password) &&
+                /[^A-Za-z0-9]/.test(form.password)
+            )
+        )
+            errors.password =
+                "Use at least 8 characters with upper and lower case letters, a number and a symbol.";
+        if (editingUserId && form.password && !form.current_password)
+            errors.current_password = "Enter the current password to set a new one.";
         formErrors = errors;
         return Object.keys(errors).length === 0;
     }
@@ -121,16 +149,21 @@
             email: form.email.trim().toLowerCase(),
             role: form.role,
             status: form.status,
-            last_login_at: "Not yet signed in",
+            ...(form.password ? { password: form.password } : {}),
+            ...(editingUserId && form.password
+                ? { current_password: form.current_password }
+                : {}),
         };
 
         const options = {
             preserveScroll: true,
-            onSuccess: () => {
+            onSuccess: (result) => {
+                if (result.props.error) {
+                    errorMessage = result.props.error;
+                    return;
+                }
                 showForm = false;
-                successMessage = editingUserId
-                    ? "User updated successfully."
-                    : "User created successfully.";
+                showFlash(result);
             },
             onError: (errors) => {
                 formErrors = errors;
@@ -151,8 +184,7 @@
             {},
             {
                 preserveScroll: true,
-                onSuccess: () =>
-                    (successMessage = "User status updated successfully."),
+                onSuccess: showFlash,
             },
         );
     }
@@ -166,8 +198,14 @@
             return;
         router.delete(`/user-management/${user.id}`, {
             preserveScroll: true,
-            onSuccess: () => (successMessage = "User deleted successfully."),
+            onSuccess: showFlash,
         });
+    }
+
+    // The server answers every action with a flash message (status on success, error when refused).
+    function showFlash(result) {
+        successMessage = result?.props?.status ?? "";
+        errorMessage = result?.props?.error ?? "";
     }
 </script>
 
@@ -182,7 +220,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
         <AppHeader title="User Management" bind:mobileMenuOpen />
         <main class="min-h-0 flex-1 overflow-y-auto">
-            <div class="mx-auto max-w-370 px-4 py-6 sm:px-8 sm:py-8">
+            <div class="w-full px-4 py-6 sm:px-8 sm:py-8">
                 <div
                     class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
                 >
@@ -290,9 +328,9 @@
                                     class="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-xs text-slate-600 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-40"
                                 >
                                     <option value="">All Roles</option>
-                                    {#each roles as role}<option
-                                            value={role.value}
-                                            >{role.label}</option
+                                    {#each Object.entries(roleLabels) as [value, label]}<option
+                                            {value}
+                                            >{label}</option
                                         >{/each}
                                 </select>
                             </label>
@@ -439,13 +477,17 @@
                                                 ><div
                                                     class="flex justify-end gap-1"
                                                 >
-                                                    <button
+                                                    {#if !canManage(user)}<span
+                                                        class="px-2.5 py-1.5 text-[11px] text-slate-400"
+                                                        title="Only an instructor can change an instructor account."
+                                                        >Instructor Only</span
+                                                    >{:else}<button
                                                         type="button"
                                                         class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                                         on:click={() =>
                                                             openEditForm(user)}
                                                         >Edit</button
-                                                    >{#if user.status === "active" || user.status === "suspended"}<button
+                                                    >{#if !isSelf(user) && (user.status === "active" || user.status === "suspended")}<button
                                                             type="button"
                                                             class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                                                             on:click={() =>
@@ -456,13 +498,13 @@
                                                             "active"
                                                                 ? "Suspend"
                                                                 : "Activate"}</button
-                                                        >{/if}<button
+                                                        >{/if}{#if !isSelf(user)}<button
                                                         type="button"
                                                         class="rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-rose-600 hover:bg-rose-50"
                                                         on:click={() =>
                                                             deleteUser(user)}
                                                         >Delete</button
-                                                    >
+                                                    >{/if}{/if}
                                                 </div></td
                                             >
                                         </tr>
@@ -474,9 +516,11 @@
                 </section>
 
                 <p class="mt-4 text-[11px] text-slate-400">
-                    Instructors and admins can change any account to any role.
-                    You cannot change your own role or status, and at least one
-                    active instructor or admin always remains.
+                    Instructors can change any account to any role. Admins
+                    manage every account except instructor accounts and cannot
+                    assign the instructor role. You cannot change your own role
+                    or status, and at least one active instructor or admin
+                    always remains.
                 </p>
             </div>
         </main>
@@ -498,7 +542,7 @@
                 class="m-0 max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 shadow-xl sm:max-h-[calc(100vh-3rem)]"
                 aria-labelledby="user-form-title"
             >
-                <div class="flex items-start justify-between">
+                <div class="flex items-start justify-between gap-3">
                     <div>
                         <h2
                             id="user-form-title"
@@ -507,14 +551,14 @@
                             {editingUserId ? "Edit User" : "Add User"}
                         </h2>
                         <p class="mt-1 text-xs text-slate-500">
-                            Admin-created users start with a private random
-                            password and choose their own with “Forgot
-                            password”.
+                            {editingUserId
+                                ? "Leave the password fields blank to keep the current password."
+                                : "Set the password the person will sign in with."}
                         </p>
                     </div>
                     <button
                         type="button"
-                        class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                        class="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                         aria-label="Close Form"
                         on:click={closeForm}
                         ><svg
@@ -536,13 +580,13 @@
                         <label
                             for="user-name"
                             class="mb-1.5 block text-xs font-medium text-slate-700"
-                            >Full Name</label
+                            >Full Name *</label
                         ><input
                             id="user-name"
                             bind:value={form.name}
                             class:border-rose-300={formErrors.name}
                             class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                            placeholder="E.G. Maria Santos"
+                            placeholder="e.g. Maria Santos"
                         />
                         <p
                             class:invisible={!formErrors.name}
@@ -555,14 +599,14 @@
                         <label
                             for="user-email"
                             class="mb-1.5 block text-xs font-medium text-slate-700"
-                            >Email Address</label
+                            >Email Address *</label
                         ><input
                             id="user-email"
                             type="email"
                             bind:value={form.email}
                             class:border-rose-300={formErrors.email}
                             class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                            placeholder="Name@Example.Com"
+                            placeholder="name@example.com"
                         />
                         <p
                             class:invisible={!formErrors.email}
@@ -576,7 +620,7 @@
                             <label
                                 for="user-role"
                                 class="mb-1.5 block text-xs font-medium text-slate-700"
-                                >Role</label
+                                >Role *</label
                             ><select
                                 id="user-role"
                                 bind:value={form.role}
@@ -595,7 +639,7 @@
                             <label
                                 for="user-status"
                                 class="mb-1.5 block text-xs font-medium text-slate-700"
-                                >Status</label
+                                >Status *</label
                             ><select
                                 id="user-status"
                                 bind:value={form.status}
@@ -605,6 +649,46 @@
                                 ></select
                             >
                         </div>
+                    </div>
+                    {#if editingUserId}
+                        <div>
+                            <label
+                                for="user-current-password"
+                                class="mb-1.5 block text-xs font-medium text-slate-700"
+                                >Current Password</label
+                            ><input
+                                id="user-current-password"
+                                type="password"
+                                autocomplete="current-password"
+                                maxlength="72"
+                                bind:value={form.current_password}
+                                class:border-rose-300={formErrors.current_password}
+                                class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            />
+                            <p class="mt-1 text-[11px] {formErrors.current_password ? 'text-rose-600' : 'text-slate-400'}">
+                                {formErrors.current_password ||
+                                    "Required only when setting a new password."}
+                            </p>
+                        </div>
+                    {/if}
+                    <div>
+                        <label
+                            for="user-password"
+                            class="mb-1.5 block text-xs font-medium text-slate-700"
+                            >{editingUserId ? "New Password (Optional)" : "Password *"}</label
+                        ><input
+                            id="user-password"
+                            type="password"
+                            autocomplete="new-password"
+                            maxlength="72"
+                            bind:value={form.password}
+                            class:border-rose-300={formErrors.password}
+                            class="h-10 w-full rounded-md border border-slate-200 px-3 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        />
+                        <p class="mt-1 text-[11px] {formErrors.password ? 'text-rose-600' : 'text-slate-400'}">
+                            {formErrors.password ||
+                                "At least 8 characters with upper and lower case letters, a number and a symbol."}
+                        </p>
                     </div>
                     <div
                         class="flex justify-end gap-2 border-t border-slate-100 pt-5"

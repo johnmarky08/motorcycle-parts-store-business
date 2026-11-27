@@ -18,7 +18,7 @@ class InventoryController extends Controller
     public function index(Request $request): Response
     {
         $sort = $request->string('sort')->toString();
-        $products = Product::query()->with('category')
+        $filtered = Product::query()
             ->when($request->string('search')->isNotEmpty(), fn ($query) => $query->where(function ($query) use ($request) {
                 $search = Like::escape($request->string('search')->toString());
                 $query->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%");
@@ -40,7 +40,16 @@ class InventoryController extends Controller
                             });
                         });
                 }
-            })
+            });
+
+        // Counts cover every product matching the filters, not only the current page.
+        $summary = [
+            'total' => (clone $filtered)->count(),
+            'low_stock' => (clone $filtered)->where('stock_quantity', '>', 0)->whereColumn('stock_quantity', '<=', 'reorder_threshold')->count(),
+            'out_of_stock' => (clone $filtered)->where('stock_quantity', 0)->count(),
+        ];
+
+        $products = $filtered->with('category')
             ->when($sort === 'price_asc', fn ($query) => $query->orderBy('selling_price'))
             ->when($sort === 'price_desc', fn ($query) => $query->orderByDesc('selling_price'))
             ->when($sort === 'stock_asc', fn ($query) => $query->orderBy('stock_quantity'))
@@ -55,6 +64,7 @@ class InventoryController extends Controller
             'products' => $products,
             'categories' => Category::orderBy('name')->get(['id', 'name']),
             'filters' => $request->only(['search', 'category_id', 'status', 'sort']),
+            'summary' => $summary,
         ]);
     }
 
@@ -102,8 +112,15 @@ class InventoryController extends Controller
 
     public function destroy(Product $product): RedirectResponse
     {
-        abort_if($product->saleItems()->exists(), 422, 'Products with sales history cannot be deleted.');
-        $product->delete();
+        if ($product->saleItems()->exists()) {
+            return back()->withErrors(['message' => 'Products with sales history cannot be deleted.']);
+        }
+
+        // A product that never sold only has its own receiving/correction entries; they go with it.
+        DB::transaction(function () use ($product) {
+            $product->stockMovements()->delete();
+            $product->delete();
+        });
 
         return back()->with('status', 'Product deleted successfully.');
     }
@@ -146,13 +163,15 @@ class InventoryController extends Controller
             'note' => ['required', 'string', 'max:255'],
         ]);
 
-        DB::transaction(function () use ($data, $product, $request) {
+        $applied = DB::transaction(function () use ($data, $product, $request) {
             $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
             $newQuantity = $data['movement_type'] === 'received'
                 ? $lockedProduct->stock_quantity + $data['quantity']
                 : $lockedProduct->stock_quantity - $data['quantity'];
 
-            abort_if($newQuantity < 0, 422, 'The adjustment cannot reduce stock below zero.');
+            if ($newQuantity < 0) {
+                return false;
+            }
             $lockedProduct->update(['stock_quantity' => $newQuantity]);
             StockMovement::create([
                 'product_id' => $lockedProduct->id,
@@ -162,7 +181,13 @@ class InventoryController extends Controller
                 'balance_after' => $newQuantity,
                 'note' => $data['note'],
             ]);
+
+            return true;
         });
+
+        if (! $applied) {
+            return back()->withErrors(['quantity' => 'The adjustment cannot reduce stock below zero.']);
+        }
 
         return back()->with('status', 'Stock adjusted successfully.');
     }

@@ -1,5 +1,7 @@
 <script>
     import { Link, router } from "@inertiajs/svelte";
+    import BrandLogo from "../Components/Shared/BrandLogo.svelte";
+    import FullscreenToggle from "../Components/Shared/FullscreenToggle.svelte";
     import Button from "../lib/components/ui/Button.svelte";
     import Input from "../lib/components/ui/Input.svelte";
 
@@ -21,14 +23,17 @@
     }
 </script>
 
+<FullscreenToggle floating />
+
 <svelte:head><title>Forgot Password | One Prompt Away</title></svelte:head>
 
 <main
-    class="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8 font-sans text-slate-900"
+    class="flex min-h-screen items-center justify-center bg-slate-50 px-4 pb-8 pt-20 font-sans text-slate-900"
 >
     <section
         class="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-10"
     >
+        <BrandLogo className="mb-8" />
         <p
             class="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700"
         >

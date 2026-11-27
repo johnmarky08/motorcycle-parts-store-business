@@ -64,7 +64,7 @@
     <div class="flex min-w-0 flex-1 flex-col">
         <AppHeader title="My Orders" bind:mobileMenuOpen />
         <main class="min-h-0 flex-1 overflow-y-auto">
-            <div class="mx-auto max-w-295 px-4 py-6 sm:px-8 sm:py-7">
+            <div class="w-full px-4 py-6 sm:px-8 sm:py-7">
                 <div
                     class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
                 >
@@ -242,11 +242,11 @@
         <dialog
             open
             transition:pop|global
-            class="m-0 max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-xl border border-slate-200 bg-white p-6 shadow-xl"
+            class="m-0 flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-xl"
             aria-labelledby="order-title"
         >
-            <div class="flex items-start justify-between gap-3">
-                <div>
+            <div class="flex shrink-0 items-start justify-between gap-3">
+                <div class="min-w-0">
                     <h2
                         id="order-title"
                         class="text-base font-semibold text-slate-950"
@@ -259,18 +259,32 @@
                 </div>
                 <button
                     type="button"
-                    class="rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                    class="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                     aria-label="Close Order"
                     on:click={() => (detail = null)}>×</button
                 >
             </div>
+            <p class="mt-4 shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+                {detail.items.length} {detail.items.length === 1 ? "Item" : "Items"}
+            </p>
+            <!-- Only the item list scrolls (about five rows tall at most), so the details above and the total stay in view. -->
             <div
-                class="mt-4 divide-y divide-slate-100 rounded-md border border-slate-100"
+                class="mt-2 max-h-80 min-h-0 divide-y divide-slate-100 overflow-y-auto overscroll-contain rounded-md border border-slate-100"
             >
                 {#each detail.items as item}<div
                         class="flex items-center justify-between gap-3 px-3 py-2.5 text-xs"
                     >
-                        <div class="min-w-0">
+                        <img
+                            src={item.image}
+                            alt={item.product_name}
+                            loading="lazy"
+                            class="h-11 w-11 shrink-0 rounded-md border border-slate-100 bg-slate-50 object-contain p-1"
+                            on:error={(event) => {
+                                if (!event.currentTarget.src.endsWith("/images/categories/general.svg"))
+                                    event.currentTarget.src = "/images/categories/general.svg";
+                            }}
+                        />
+                        <div class="min-w-0 flex-1">
                             <p class="truncate font-semibold text-slate-800">
                                 {item.product_name}
                             </p>
@@ -286,7 +300,7 @@
                     </div>{/each}
             </div>
             <div
-                class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-sm"
+                class="mt-4 flex shrink-0 items-center justify-between border-t border-slate-100 pt-4 text-sm"
             >
                 <span class="font-medium text-slate-600">Total</span><span
                     class="text-lg font-semibold text-slate-950"
