@@ -17,7 +17,7 @@ python ml/generate_datasets.py                  # regenerates ml/datasets/* and 
 | `demand_model.py` | Weekly units per product; demand, slow-moving and best-selling workflows |
 | `common.py` | Metrics (MAE, RMSE, MAPE, WAPE, R²), safe paths, SHA-256 verified model loading |
 | `generate_datasets.py` | Deterministic generator of the demo data |
-| `datasets/` | `sales_history.csv` (22,419 rows) and `product_demand.csv` (5,985 rows) |
+| `datasets/` | `sales_history.csv` (126,552 rows) and `product_demand.csv` (9,828 rows) |
 | `templates/` | Column layout for your own CSV files (upload them in Knowledge Analysis) |
 | `tests/test_ml.py` | Training, prediction, integrity and path-safety tests |
 
@@ -31,8 +31,9 @@ python ml/generate_datasets.py                  # regenerates ml/datasets/* and 
 Or skip the CSV work: **Refresh Datasets From Orders** exports every order in the database (the seeded history plus all real orders) to the two datasets
 "Live Sales History" and "Live Product Demand" (complete Monday–Sunday weeks only). Train on them to include what customers actually bought.
 
-Both files need at least 1,000 rows (and at least 26 complete weeks of history). Real data usually has stronger patterns than the
-synthetic demo data, so the Random Forest should perform better than it does on the demo set.
+Both files need at least 1,000 rows (and at least 26 complete weeks of history). The synthetic demo data is deliberately
+low-noise (clear trend, seasonality and payday effects; knobs at the top of `generate_datasets.py`), so expect lower accuracy on
+real, noisier store data. Hold-out R² on the demo set: sales 0.87 (linear) / 0.79 (forest), demand 0.84 / 0.82.
 
 ## Models
 

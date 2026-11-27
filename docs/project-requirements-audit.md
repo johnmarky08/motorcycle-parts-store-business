@@ -9,7 +9,7 @@ Maps each requirement of the course assignment to where it is implemented and ho
 | 3 | Simple Linear Regression | `ml/sales_model.py`, `ml/demand_model.py` (`fit_slr`) | `ml/tests/test_ml.py` |
 | 4 | Random Forest Regression | same files (`RandomForestRegressor`, optional tuning) | `ml/tests/test_ml.py` |
 | 5 | Save and load models "with improvements" | Models saved as `.joblib`, SHA-256 recorded in `ml_models`, verified before load, versioned, one active model per type; hold-out evaluation then refit on all data; detrended forest for sales; optional tuning | `test_models_are_saved_and_loaded`, `test_tampered_model_is_rejected` |
-| 6 | At least 1,000 records per dataset (CSV) | `ml/datasets/sales_history.csv` (22,419), `product_demand.csv` (5,985); uploads must have ≥ 1,000 records | `DatasetInspector`, upload tests |
+| 6 | At least 1,000 records per dataset (CSV) | `ml/datasets/sales_history.csv` (126,552), `product_demand.csv` (9,828); uploads must have ≥ 1,000 records | `DatasetInspector`, upload tests |
 | 7 | Evaluation metrics and descriptions | MAE, RMSE, MAPE, WAPE, R² stored per model and described in Knowledge Analysis | `PredictionAndAnalysisTest` |
 | 8 | Security | OWASP table in `README.md` section 5; headers, rate limits, validation, audit log | `SecurityTest`, `RoleAccessTest` |
 | 9 | Functionality and reliable predictions | Four prediction workflows with ranges (≈80% interval) and restock suggestion | live smoke test, `test_ml.py` |

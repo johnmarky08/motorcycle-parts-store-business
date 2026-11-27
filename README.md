@@ -100,8 +100,8 @@ on XAMPP); `MAIL_MAILER=log` only writes the message to `storage/logs`.
 
 | File (`ml/datasets/`) | Rows | One row is… |
 | --- | --- | --- |
-| `sales_history.csv` | 22,419 | a sold item on a transaction (14,385 transactions, Jan 2025 – Nov 2026) |
-| `product_demand.csv` | 5,985 | units sold for one product in one week (63 products × 95 weeks) |
+| `sales_history.csv` | 126,552 | a sold item on a transaction (81,214 transactions, Nov 2023 – Nov 2026) |
+| `product_demand.csv` | 9,828 | units sold for one product in one week (63 products × 156 weeks) |
 
 The data is **synthetic** (realistic parts catalog and prices, weekday/payday/seasonal patterns, growth, random noise), generated
 deterministically by `python ml/generate_datasets.py`. The database is seeded from the same CSV, so dashboard, transactions and datasets agree.

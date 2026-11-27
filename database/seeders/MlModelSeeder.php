@@ -25,7 +25,7 @@ class MlModelSeeder extends Seeder
         foreach (Dataset::where('is_system', true)->get() as $dataset) {
             foreach (array_keys(MlModel::ALGORITHMS) as $algorithm) {
                 try {
-                    $ml->train($dataset, $algorithm, ['split' => 0.8, 'tune' => false, 'seasonal' => false], $instructor);
+                    $ml->train($dataset, $algorithm, ['split' => 0.8, 'tune' => false, 'seasonal' => true], $instructor);
                     $this->command?->info("Trained {$algorithm} on {$dataset->name}");
                 } catch (MlException $e) {
                     $this->command?->warn("Skipped {$algorithm} on {$dataset->name}: {$e->getMessage()}");

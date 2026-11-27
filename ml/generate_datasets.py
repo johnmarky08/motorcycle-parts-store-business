@@ -17,8 +17,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SEED = 2026
-START = date(2025, 1, 6)   # Monday
-END = date(2026, 11, 1)    # Sunday  -> 95 complete weeks
+START = date(2023, 11, 6)  # Monday
+END = date(2026, 11, 1)    # Sunday  -> 156 complete weeks (three full seasonal cycles)
 
 # (name, category, sku, price, popularity, max_qty, description)
 P = [
@@ -126,8 +126,16 @@ PAYMENTS = ["Cash", "GCash", "Card", "Bank Transfer"]
 PAY_W = [55, 28, 9, 8]
 DOW_W = [0.86, 0.92, 0.95, 1.0, 1.12, 1.28, 1.15]  # Mon..Sun
 
+# Signal vs. noise knobs (tuned so the patterns dominate the random variation).
+BASE_TX = 45.0          # average transactions per day at the start
+GROWTH = 0.30           # yearly growth of the store
+TX_NOISE = 0.15         # spread of daily transaction counts (x Poisson sd)
+PAYDAY_LIFT = 1.15      # demand on/around the 15th and 30th
+# Store-wide month effect: rainy-season peak (Jun-Aug), Christmas peak (Dec), slow Jan-Feb.
+MONTH_ALL = [.82, .80, .92, 1.02, 1.0, 1.18, 1.35, 1.30, 1.10, .92, 1.0, 1.35]
 
-def main() -> None:
+
+def main(out: Path = ROOT) -> None:
     rng = random.Random(SEED)
     products = []
     for i, (name, cat, sku, price, pop, maxq, desc) in enumerate(P, start=1):
@@ -145,11 +153,11 @@ def main() -> None:
     items, tx_no, per_day = [], 0, {}
     for d in range(days):
         day = START + timedelta(days=d)
-        growth = 1.0 + 0.16 * (d / 365)
-        payday = 1.25 if day.day in (14, 15, 16, 29, 30, 31) else 1.0
-        month_all = [1.0, .97, 1.0, 1.02, 1.0, 1.05, 1.06, 1.05, 1.03, 1.03, 1.05, 1.18][day.month - 1]
-        lam = 17.0 * growth * DOW_W[day.weekday()] * payday * month_all
-        n_tx = max(0, round(rng.gauss(lam, math.sqrt(lam) * 0.9)))
+        growth = 1.0 + GROWTH * (d / 365)
+        payday = PAYDAY_LIFT if day.day in (14, 15, 16, 29, 30, 31) else 1.0
+        month_all = MONTH_ALL[day.month - 1]
+        lam = BASE_TX * growth * DOW_W[day.weekday()] * payday * month_all
+        n_tx = max(0, round(rng.gauss(lam, math.sqrt(lam) * TX_NOISE)))
         weights = [p["pop"] * SEASON[p["category"]][day.month - 1] for p in products]
         for _ in range(n_tx):
             tx_no += 1
@@ -171,10 +179,10 @@ def main() -> None:
                                   payment_method=pay))
         per_day[day] = n_tx
 
-    (ROOT / "ml/datasets").mkdir(parents=True, exist_ok=True)
-    (ROOT / "database/seeders/data").mkdir(parents=True, exist_ok=True)
+    (out / "ml/datasets").mkdir(parents=True, exist_ok=True)
+    (out / "database/seeders/data").mkdir(parents=True, exist_ok=True)
 
-    with open(ROOT / "database/seeders/data/products.csv", "w", newline="", encoding="utf-8") as f:
+    with open(out / "database/seeders/data/products.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["id", "sku", "name", "category", "description", "selling_price", "stock_quantity", "reorder_threshold"])
         for p in products:
@@ -183,7 +191,7 @@ def main() -> None:
 
     cols = ["transaction_number", "transaction_date", "product_id", "sku", "product_name", "category",
             "quantity", "unit_price", "total_amount", "payment_method"]
-    with open(ROOT / "ml/datasets/sales_history.csv", "w", newline="", encoding="utf-8") as f:
+    with open(out / "ml/datasets/sales_history.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=cols)
         w.writeheader()
         w.writerows(items)
@@ -199,7 +207,7 @@ def main() -> None:
         a[0] += it["quantity"]
         a[1] += float(it["total_amount"])
         a[2].add(it["transaction_number"])
-    with open(ROOT / "ml/datasets/product_demand.csv", "w", newline="", encoding="utf-8") as f:
+    with open(out / "ml/datasets/product_demand.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["week_start", "product_id", "sku", "product_name", "category", "units_sold", "revenue", "transactions", "avg_unit_price"])
         for wk in range(weeks):
@@ -212,4 +220,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    main(Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT)
